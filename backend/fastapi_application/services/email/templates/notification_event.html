@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}
+{{ title }} | Конструктор бизнес-планов
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<p>Здравствуйте, {{ username }}!</p>
+<p>{{ body }}</p>
+
+<div class="info">
+    <strong>Тип:</strong> {{ source_type_label }}<br>
+    <strong>Дата:</strong> {{ event_date }}
+</div>
+
+<p style="color: #666; font-size: 12px; margin-top: 20px;">
+    Это уведомление отправлено автоматически. Вы можете отключить email-уведомления в настройках аккаунта.
+</p>
+{% endblock %}
+
+{% block footer %}
+<p>© 2026 Конструктор бизнес-планов. Вопросы? {{ support_email }}</p>
+{% endblock %}

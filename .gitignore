@@ -1,0 +1,33 @@
+# ── Environment ─────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Node ────────────────────────────────────────────────────
+node_modules/
+dist/
+build/
+
+# ── Python ──────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+.mypy_cache/
+.ruff_cache/
+.venv/
+
+# ── IDE / Tools ─────────────────────────────────────────────
+.vscode/
+.idea/
+.opencode/
+
+# ── Docker Compose (local/prod) ────────────────────────────
+docker-compose.local.yml
+docker-compose.prod.yml
+
+# ── OS ──────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Docker volumes ──────────────────────────────────────────
+pg_data/

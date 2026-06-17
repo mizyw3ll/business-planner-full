@@ -1,0 +1,56 @@
+[tool.poetry]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.13"
+
+fastapi = "^0.121.1"
+uvicorn = {extras = ["standard"], version = "^0.38.0"}
+pydantic = {extras = ["email"], version = "^2.12.4"}
+pydantic-settings = "^2.11.0"
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.44"}
+asyncpg = "^0.30.0"
+alembic = "^1.17.1"
+fastapi-users = {extras = ["sqlalchemy", "oauth"], version = "^15.0.1"}
+httpx = "^0.28.1"
+
+# Email
+aiosmtplib = "^3.0.2"
+jinja2 = "^3.1.4"
+openpyxl = "^3.1.5"
+markdown = "^3.7"
+python-multipart = "^0.0.20"
+weasyprint = "^62.0"
+aiobotocore = "^2.15.0"
+icalendar = "^6.0"
+
+[dependency-groups]
+dev = [
+    "ruff (>=0.11.0,<1.0.0)",
+    "mypy (>=1.15.0,<2.0.0)",
+    "pre-commit (>=4.0.0,<5.0.0)",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "W", "I", "N", "UP", "SIM"]
+
+[tool.ruff.format]
+quote-style = "double"
+skip-magic-trailing-comma = false
+
+[tool.mypy]
+python_version = "3.13"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict_optional = true
+check_untyped_defs = false
+disallow_any_unimported = false
+ignore_missing_imports = true
+exclude = [
+    "fastapi_application/alembic/",
+]
