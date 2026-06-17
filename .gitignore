@@ -21,8 +21,7 @@ __pycache__/
 .idea/
 .opencode/
 
-# ── Docker Compose (local/prod) ────────────────────────────
-docker-compose.local.yml
+# ── Docker Compose ─────────────────────────────────────────
 docker-compose.prod.yml
 
 # ── OS ──────────────────────────────────────────────────────
