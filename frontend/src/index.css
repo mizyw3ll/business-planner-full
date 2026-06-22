@@ -1,9 +1,76 @@
 @import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap");
 @import "tailwindcss";
+/* @tailwindcss/typography */
 @plugin "@tailwindcss/typography";
 
 * {
   box-sizing: border-box;
+}
+
+/* ============================================
+   Browser Autocomplete — Force dark theme on autofill
+   Using @keyframes to override Chrome's internal autofill styles
+   ============================================ */
+
+@keyframes onAutoFillStartDark {
+  from { background-color: rgba(20, 17, 48, 0.95) !important; }
+  to   { background-color: rgba(20, 17, 48, 0.95) !important; }
+}
+@keyframes onAutoFillCancelDark {
+  from { background-color: transparent; }
+  to   { background-color: transparent; }
+}
+@keyframes onAutoFillStartLight {
+  from { background-color: #ffffff !important; }
+  to   { background-color: #ffffff !important; }
+}
+@keyframes onAutoFillCancelLight {
+  from { background-color: transparent; }
+  to   { background-color: transparent; }
+}
+
+input:-webkit-autofill {
+  -webkit-text-fill-color: #f0eeff !important;
+  caret-color: #f0eeff !important;
+  animation-name: onAutoFillStartDark, onAutoFillCancelDark;
+  animation-duration: 0.001s, 0.001s;
+  animation-delay: 0s, 0s;
+  animation-timing-function: step-end, step-end;
+  animation-fill-mode: forwards, forwards;
+  animation-iteration-count: 1, 1;
+}
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #f0eeff !important;
+  caret-color: #f0eeff !important;
+}
+
+html[data-theme="light"] input:-webkit-autofill {
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #0f172a !important;
+  animation-name: onAutoFillStartLight, onAutoFillCancelLight;
+}
+
+/* Extra: force background on all inputs via class-based approach */
+.input-autofill-dark {
+  background-color: rgba(20, 17, 48, 0.95) !important;
+  -webkit-text-fill-color: #f0eeff !important;
+}
+html[data-theme="light"] .input-autofill-dark {
+  background-color: #ffffff !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+/* ============================================
+   Mobile Performance — GPU acceleration & disable heavy effects
+   ============================================ */
+
+/* Disable grid on mobile */
+@media (max-width: 768px) {
+  .aurora-grid {
+    display: none !important;
+  }
 }
 
 html,
@@ -32,6 +99,7 @@ body,
   --shadow-glow-strong: 0 0 32px rgba(99, 102, 241, 0.35), 0 0 64px rgba(99, 102, 241, 0.1);
 
   --bg-body: #070515;
+  --bg-page: rgba(7, 5, 21, 0.85);
   --bg-primary: #0e0c24;
   --bg-secondary: #141230;
   --bg-tertiary: #1a1740;
@@ -68,6 +136,7 @@ html[data-theme="light"] {
   --shadow-glow-strong: 0 0 28px rgba(99, 102, 241, 0.12), 0 0 56px rgba(99, 102, 241, 0.05);
 
   --bg-body: #f6f5ff;
+  --bg-page: rgba(246, 245, 255, 0.85);
   --bg-primary: #ffffff;
   --bg-secondary: #fdfcff;
   --bg-tertiary: #f5f3ff;
@@ -170,6 +239,9 @@ html[data-theme="light"] {
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
@@ -241,224 +313,6 @@ html[data-theme="light"] {
   }
 }
 
-/* Auth Modal Animations */
-@keyframes authOverlayIn {
-  from {
-    opacity: 0;
-    backdrop-filter: blur(0px);
-  }
-  to {
-    opacity: 1;
-    backdrop-filter: blur(12px);
-  }
-}
-@keyframes authCardIn {
-  from {
-    opacity: 0;
-    transform: scale(0.92) translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-@keyframes authOrbFloat1 {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  33% {
-    transform: translate(30px, -20px) scale(1.05);
-  }
-  66% {
-    transform: translate(-20px, 15px) scale(0.95);
-  }
-}
-@keyframes authOrbFloat2 {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  33% {
-    transform: translate(-25px, 25px) scale(1.08);
-  }
-  66% {
-    transform: translate(15px, -30px) scale(0.92);
-  }
-}
-@keyframes authOrbFloat3 {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  50% {
-    transform: translate(20px, 20px) scale(1.1);
-  }
-}
-@keyframes authInputFocus {
-  0% {
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
-  }
-}
-@keyframes authShimmer {
-  0% {
-    background-position: -200% center;
-  }
-  100% {
-    background-position: 200% center;
-  }
-}
-@keyframes authPulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.6;
-  }
-}
-@keyframes authSlideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-@keyframes authSlideInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-@keyframes authLabelFloat {
-  from {
-    transform: translateY(0);
-    font-size: 14px;
-  }
-  to {
-    transform: translateY(-24px);
-    font-size: 11px;
-  }
-}
-@keyframes authCheckPop {
-  0% {
-    transform: scale(0);
-  }
-  50% {
-    transform: scale(1.2);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-@keyframes authGradientShift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-@keyframes authButtonShine {
-  0% {
-    left: -100%;
-  }
-  100% {
-    left: 200%;
-  }
-}
-
-/* ============================================
-   Particles & Geometric Background
-   ============================================ */
-
-@keyframes particle-float-1 {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-    opacity: 0.7;
-  }
-  25% {
-    transform: translate(50px, -60px) scale(1.2);
-    opacity: 1;
-  }
-  50% {
-    transform: translate(-30px, -100px) scale(0.85);
-    opacity: 0.8;
-  }
-  75% {
-    transform: translate(60px, -40px) scale(1.1);
-    opacity: 0.9;
-  }
-}
-
-@keyframes particle-float-2 {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-    opacity: 0.6;
-  }
-  33% {
-    transform: translate(-60px, -70px) scale(1.25);
-    opacity: 1;
-  }
-  66% {
-    transform: translate(40px, -90px) scale(0.8);
-    opacity: 0.75;
-  }
-}
-
-@keyframes particle-float-3 {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-    opacity: 0.65;
-  }
-  50% {
-    transform: translate(50px, -80px) scale(1.3);
-    opacity: 1;
-  }
-}
-
-@keyframes particle-drift {
-  0% {
-    transform: translateY(0) translateX(0);
-    opacity: 0;
-  }
-  10% {
-    opacity: 0.8;
-  }
-  90% {
-    opacity: 0.8;
-  }
-  100% {
-    transform: translateY(-100vh) translateX(40px);
-    opacity: 0;
-  }
-}
-
-/* Particle dot — pure diffuse light, no visible shape */
-.particle {
-  position: absolute;
-  pointer-events: none;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-  mix-blend-mode: screen;
-}
-
 /* ============================================
    Advanced Togglable Effects (Solid Mode)
    ============================================ */
@@ -474,30 +328,7 @@ html[data-theme="light"].theme-liquid-glass {
   --border-primary: rgba(99, 102, 241, 0.3);
 }
 
-/* Antigravity Cursor Follower */
-:root {
-  --mouse-x: 50%;
-  --mouse-y: 50%;
-}
-.antigravity-layer {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  will-change: background;
-  background: radial-gradient(
-    400px circle at var(--mouse-x) var(--mouse-y),
-    rgba(147, 197, 253, 0.25) 0%,
-    rgba(129, 140, 248, 0.08) 35%,
-    transparent 80%
-  );
-  mix-blend-mode: plus-lighter;
-  opacity: 0;
-}
-.theme-antigravity .antigravity-layer {
-  opacity: 1;
-  transition: opacity 0.3s ease;
-}
+
 
 /* ============================================
    Card Styles — Enhanced
@@ -564,222 +395,7 @@ html[data-theme="light"] .aurora-grid {
     linear-gradient(90deg, rgba(99, 102, 241, 0.12) 1px, transparent 1px);
 }
 
-.aurora-orb {
-  position: absolute;
-  border-radius: 50%;
-  mix-blend-mode: screen;
-  will-change: transform;
-}
-.aurora-orb-1 {
-  width: 900px;
-  height: 900px;
-  top: -15%;
-  left: -10%;
-  background: radial-gradient(
-    circle,
-    rgba(99, 102, 241, 0.45) 0%,
-    rgba(79, 70, 229, 0.15) 35%,
-    rgba(129, 140, 248, 0.08) 55%,
-    transparent 75%
-  );
-  filter: blur(60px);
-  animation: orb-chaos-1 28s ease-in-out infinite;
-}
-.aurora-orb-2 {
-  width: 750px;
-  height: 750px;
-  top: 25%;
-  right: -12%;
-  background: radial-gradient(
-    circle,
-    rgba(129, 140, 248, 0.35) 0%,
-    rgba(99, 102, 241, 0.12) 40%,
-    rgba(165, 180, 252, 0.06) 60%,
-    transparent 78%
-  );
-  filter: blur(70px);
-  animation: orb-chaos-2 32s ease-in-out infinite;
-}
-.aurora-orb-3 {
-  width: 650px;
-  height: 650px;
-  bottom: -10%;
-  left: 30%;
-  background: radial-gradient(
-    circle,
-    rgba(165, 180, 252, 0.3) 0%,
-    rgba(99, 102, 241, 0.1) 35%,
-    rgba(79, 70, 229, 0.05) 55%,
-    transparent 75%
-  );
-  filter: blur(65px);
-  animation: orb-chaos-3 35s ease-in-out infinite;
-}
-.aurora-orb-4 {
-  width: 500px;
-  height: 500px;
-  top: 50%;
-  left: 50%;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, rgba(129, 140, 248, 0.08) 40%, transparent 70%);
-  filter: blur(55px);
-  animation: orb-chaos-4 25s ease-in-out infinite;
-}
-.aurora-orb-5 {
-  width: 400px;
-  height: 400px;
-  top: 5%;
-  left: 45%;
-  background: radial-gradient(circle, rgba(79, 70, 229, 0.25) 0%, rgba(99, 102, 241, 0.1) 40%, transparent 72%);
-  filter: blur(50px);
-  animation: orb-chaos-5 30s ease-in-out infinite;
-}
 
-/* Smooth chaotic orb motion — irregular keyframe intervals for organic feel */
-@keyframes orb-chaos-1 {
-  0% {
-    transform: translate(0%, 0%) scale(1);
-  }
-  11% {
-    transform: translate(6%, -9%) scale(1.06);
-  }
-  24% {
-    transform: translate(-4%, 5%) scale(0.96);
-  }
-  38% {
-    transform: translate(10%, 3%) scale(1.04);
-  }
-  52% {
-    transform: translate(-8%, -6%) scale(0.98);
-  }
-  65% {
-    transform: translate(3%, 11%) scale(1.07);
-  }
-  78% {
-    transform: translate(-6%, -4%) scale(0.94);
-  }
-  90% {
-    transform: translate(8%, 7%) scale(1.03);
-  }
-  100% {
-    transform: translate(0%, 0%) scale(1);
-  }
-}
-@keyframes orb-chaos-2 {
-  0% {
-    transform: translate(0%, 0%) scale(1);
-  }
-  15% {
-    transform: translate(-8%, 7%) scale(1.05);
-  }
-  28% {
-    transform: translate(5%, -10%) scale(0.95);
-  }
-  40% {
-    transform: translate(-3%, 4%) scale(1.08);
-  }
-  55% {
-    transform: translate(9%, -5%) scale(0.93);
-  }
-  68% {
-    transform: translate(-7%, 8%) scale(1.06);
-  }
-  82% {
-    transform: translate(4%, -7%) scale(0.97);
-  }
-  94% {
-    transform: translate(-5%, 3%) scale(1.04);
-  }
-  100% {
-    transform: translate(0%, 0%) scale(1);
-  }
-}
-@keyframes orb-chaos-3 {
-  0% {
-    transform: translate(0%, 0%) scale(1);
-  }
-  13% {
-    transform: translate(7%, 4%) scale(0.95);
-  }
-  27% {
-    transform: translate(-9%, -8%) scale(1.07);
-  }
-  42% {
-    transform: translate(4%, 9%) scale(0.94);
-  }
-  56% {
-    transform: translate(-6%, -3%) scale(1.05);
-  }
-  69% {
-    transform: translate(8%, 5%) scale(0.96);
-  }
-  81% {
-    transform: translate(-4%, -9%) scale(1.08);
-  }
-  93% {
-    transform: translate(5%, 6%) scale(0.97);
-  }
-  100% {
-    transform: translate(0%, 0%) scale(1);
-  }
-}
-@keyframes orb-chaos-4 {
-  0% {
-    transform: translate(0%, 0%) scale(1);
-  }
-  18% {
-    transform: translate(-5%, 8%) scale(1.05);
-  }
-  33% {
-    transform: translate(8%, -6%) scale(0.96);
-  }
-  47% {
-    transform: translate(-10%, 5%) scale(1.07);
-  }
-  60% {
-    transform: translate(3%, -8%) scale(0.93);
-  }
-  74% {
-    transform: translate(-7%, 10%) scale(1.06);
-  }
-  86% {
-    transform: translate(6%, -4%) scale(0.95);
-  }
-  96% {
-    transform: translate(-3%, 7%) scale(1.03);
-  }
-  100% {
-    transform: translate(0%, 0%) scale(1);
-  }
-}
-@keyframes orb-chaos-5 {
-  0% {
-    transform: translate(0%, 0%) scale(1);
-  }
-  14% {
-    transform: translate(9%, -7%) scale(1.04);
-  }
-  29% {
-    transform: translate(-5%, 6%) scale(0.96);
-  }
-  43% {
-    transform: translate(7%, -10%) scale(1.08);
-  }
-  57% {
-    transform: translate(-8%, 4%) scale(0.93);
-  }
-  71% {
-    transform: translate(4%, -5%) scale(1.06);
-  }
-  84% {
-    transform: translate(-6%, 9%) scale(0.95);
-  }
-  95% {
-    transform: translate(8%, -3%) scale(1.04);
-  }
-  100% {
-    transform: translate(0%, 0%) scale(1);
-  }
-}
 
 /* Utility classes */
 .animate-fade-in {
@@ -796,6 +412,17 @@ html[data-theme="light"] .aurora-grid {
   animation: pulse-subtle 3s ease-in-out infinite;
 }
 
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes pulse-subtle {
   0%,
   100% {
@@ -804,25 +431,6 @@ html[data-theme="light"] .aurora-grid {
   50% {
     opacity: 0.6;
   }
-}
-
-.stagger-1 {
-  animation-delay: 0.06s !important;
-}
-.stagger-2 {
-  animation-delay: 0.12s !important;
-}
-.stagger-3 {
-  animation-delay: 0.18s !important;
-}
-.stagger-4 {
-  animation-delay: 0.24s !important;
-}
-.stagger-5 {
-  animation-delay: 0.3s !important;
-}
-.stagger-6 {
-  animation-delay: 0.36s !important;
 }
 
 /* Hero animations */
@@ -933,15 +541,19 @@ html[data-theme="light"] .aurora-grid {
     border-color: transparent;
   }
 }
-@keyframes float-particle {
-  0%,
-  100% {
-    transform: translateY(0) translateX(0);
-    opacity: 0.3;
+
+/* PageLoader */
+@keyframes loaderSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes loaderRocket {
+  0%, 100% {
+    transform: translateY(0);
   }
   50% {
-    transform: translateY(-20px) translateX(10px);
-    opacity: 0.8;
+    transform: translateY(-3px);
   }
 }
 
@@ -1490,21 +1102,6 @@ textarea::placeholder {
 /* ============================================
    Visual Effects Toggle Classes
    ============================================ */
-
-/* Aurora orbs */
-.no-aurora .aurora-orb,
-.no-aurora .aurora-orb-1,
-.no-aurora .aurora-orb-2,
-.no-aurora .aurora-orb-3,
-.no-aurora .aurora-orb-4,
-.no-aurora .aurora-orb-5 {
-  display: none !important;
-}
-
-/* Particles */
-.no-particles .particle {
-  display: none !important;
-}
 
 /* Grid overlay */
 .no-grid .aurora-grid {

@@ -1,11 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type TiptapNode = { type: string; content?: TiptapNode[]; text?: string; marks?: any[]; attrs?: Record<string, any> };
 
-export function escapeMarkdown(text: string): string {
-  // Escape only when needed — bold/italic markers etc.
-  return text;
-}
-
 function renderMarks(text: string, marks?: any[]): string {
   if (!marks?.length) return text;
   let result = text;

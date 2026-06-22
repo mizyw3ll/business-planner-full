@@ -1,4 +1,5 @@
 ﻿import axios from "axios";
+import { extractApiError } from "./shared/utils/extractApiError";
 
 export const TOKEN_KEY = "remain.accessToken";
 
@@ -156,10 +157,15 @@ api.interceptors.response.use(
   },
   (error) => {
     const config = error.config as (typeof error.config & { metadata?: { startTime: number } }) | undefined;
-    if (config?.metadata?.startTime !== undefined) {
+    const status = error.response?.status as number | undefined;
+    // Don't log 401 on /users/me — expected when not logged in
+    const isAuthCheck = config?.url?.includes("/users/me") && status === 401;
+    if (!isAuthCheck && config?.metadata?.startTime !== undefined) {
       const durationMs = performance.now() - config.metadata.startTime;
       console.warn(`[API error] ${config.method?.toUpperCase()} ${config.url} — ${durationMs.toFixed(0)}ms`);
     }
+    // Attach extracted user-friendly message to every error
+    (error as Error & { userMessage?: string }).userMessage = extractApiError(error);
     return Promise.reject(error);
   },
 );

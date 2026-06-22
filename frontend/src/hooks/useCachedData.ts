@@ -13,19 +13,9 @@ import {
   getContacts,
   getDeals,
   getPipelineStats,
-  meApi,
   searchApi,
 } from "../api";
 import { queryKeys } from "../lib/queryClient";
-
-export function useUserQuery(enabled = true) {
-  return useQuery({
-    queryKey: queryKeys.user,
-    queryFn: meApi,
-    enabled,
-    staleTime: 5 * 60 * 1000,
-  });
-}
 
 export function useTagsQuery() {
   return useQuery({
