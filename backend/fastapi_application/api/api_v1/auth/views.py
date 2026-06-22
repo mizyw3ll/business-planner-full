@@ -20,6 +20,7 @@ from api.dependencies.authentication import (
     authentication_backend,
     get_user_manager,
 )
+from utils import get_client_ip
 
 log = logging.getLogger(__name__)
 
@@ -37,16 +38,6 @@ class ForgotPasswordRequest(BaseModel):
 # Custom endpoints with proper JSON responses
 # (registered before fastapi-users routers to take precedence)
 # ═══════════════════════════════════════════════════════════════
-
-
-def _get_client_ip(request: Request) -> str | None:
-    """Extract client IP, respecting X-Forwarded-For behind proxy."""
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    if request.client:
-        return request.client.host
-    return None
 
 
 @router.post(
@@ -82,7 +73,7 @@ async def custom_login(
             detail="Учётная запись не активна",
         )
 
-    ip = _get_client_ip(request)
+    ip = get_client_ip(request)
     ua = request.headers.get("user-agent", "")[:512]
 
     async with db_helper.session_factory() as session:
@@ -205,8 +196,6 @@ async def change_password(
     user_manager: CustomUserManager = Depends(get_user_manager),
 ):
     """Change password with old password verification and similarity check."""
-    from difflib import SequenceMatcher
-
     # Verify old password
     verified, _ = user_manager.password_helper.verify_and_update(
         body.old_password,
@@ -217,26 +206,17 @@ async def change_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Неверный текущий пароль",
         )
-
-    # Additional similarity check using SequenceMatcher
-    similarity = SequenceMatcher(None, body.old_password.lower(), body.new_password.lower()).ratio()
-    if similarity > 0.6:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Новый пароль слишком похож на старый",
-        )
-
     # Hash and update new password
     new_hash = user_manager.password_helper.hash(body.new_password)
     await user_manager.user_db.update(user, {"hashed_password": new_hash})
 
     # Send notification email (no session = no DB log, but email still sends)
     try:
-        ip = _get_client_ip(request)
+        ip = get_client_ip(request)
         await user_manager.email_service.send_password_changed_notification(
             to=user.email,
             username=user.username,
-            changed_at=datetime.utcnow().isoformat(),
+            changed_at=datetime.now(UTC).isoformat(),
             ip_address=ip,
         )
     except Exception as exc:

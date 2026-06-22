@@ -4,7 +4,9 @@ from datetime import datetime
 
 from core.types.user_id import UserIdType
 from fastapi_users import schemas
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
+
+from core.types import BaseModel
 
 # ═══════════════════════════════════════════════════════════════
 # Валидатор username (вынесен для переиспользования)
@@ -146,7 +148,5 @@ class ChangePasswordRequest(BaseModel):
         new = self.new_password
         if old == new:
             raise ValueError("Новый пароль должен отличаться от старого")
-        # Простая проверка схожести: если новый содержит старый или наоборот
-        if old.lower() in new.lower() or new.lower() in old.lower():
-            raise ValueError("Новый пароль слишком похож на старый")
+
         return self
