@@ -46,5 +46,4 @@ class Notification(Base, IdIntPkMixin):
 
     user: Mapped["User"] = relationship(
         back_populates="notifications",
-        lazy="joined",
     )

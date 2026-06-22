@@ -80,5 +80,4 @@ class TaxEvent(Base, IdIntPkMixin):
 
     user: Mapped["User"] = relationship(
         back_populates="tax_events",
-        lazy="joined",
     )

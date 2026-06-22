@@ -88,7 +88,6 @@ class Tag(Base, IdIntPkMixin):
 
     user: Mapped["User"] = relationship(
         back_populates="tags",
-        lazy="joined",
     )
     business_plans: Mapped[list["BusinessPlan"]] = relationship(
         secondary=plan_tags,

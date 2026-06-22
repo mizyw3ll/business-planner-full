@@ -42,7 +42,6 @@ class Board(Base, IdIntPkMixin):
 
     user: Mapped["User"] = relationship(
         back_populates="boards",
-        lazy="joined",
     )
     columns: Mapped[list["BoardColumn"]] = relationship(
         back_populates="board",

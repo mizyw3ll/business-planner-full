@@ -40,7 +40,6 @@ class Project(Base, IdIntPkMixin):
 
     user: Mapped["User"] = relationship(
         back_populates="projects",
-        lazy="joined",
     )
     notes: Mapped[list["Note"]] = relationship(
         back_populates="project",

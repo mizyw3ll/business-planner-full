@@ -57,11 +57,9 @@ class FinancialChart(Base, IdIntPkMixin):
 
     user: Mapped["User"] = relationship(
         back_populates="financial_charts",
-        lazy="joined",
     )
     currency: Mapped["Currency"] = relationship(
         back_populates="financial_charts",
-        lazy="joined",
     )
     chart_points: Mapped[list["ChartPoint"]] = relationship(
         back_populates="financial_chart",

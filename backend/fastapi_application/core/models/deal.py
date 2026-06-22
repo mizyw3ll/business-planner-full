@@ -2,8 +2,8 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     DateTime,
-    Float,
     ForeignKey,
+    Numeric,
     String,
     Text,
     text,
@@ -41,7 +41,7 @@ class Deal(Base, IdIntPkMixin):
         server_default="new",
     )
     value: Mapped[float | None] = mapped_column(
-        Float,
+        Numeric(15, 2),
         nullable=True,
     )
     currency: Mapped[str] = mapped_column(
@@ -74,7 +74,6 @@ class Deal(Base, IdIntPkMixin):
 
     user: Mapped["User"] = relationship(
         back_populates="deals",
-        lazy="joined",
     )
     contact: Mapped["Contact | None"] = relationship(
         back_populates="deals",

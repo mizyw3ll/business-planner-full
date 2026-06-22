@@ -111,10 +111,32 @@ class PlanBlock(Base, IdIntPkMixin):
         lazy="noload",
     )
 
+    def get_linked_chart_ids(self) -> list[int]:
+        """Return linked chart IDs. Only works if relationship is loaded via selectinload."""
+        return [chart.id for chart in self.linked_financial_charts]
+
+    def get_comments_count(self) -> int:
+        """Return comments count. Only works if relationship is loaded via selectinload."""
+        return len(self.comments)
+
     @property
     def linked_financial_chart_ids(self) -> list[int]:
-        return [chart.id for chart in self.linked_financial_charts]
+        import warnings
+        warnings.warn(
+            "linked_financial_chart_ids property relies on noload relationship. "
+            "Use selectinload(PlanBlock.linked_financial_charts) or call get_linked_chart_ids().",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.get_linked_chart_ids()
 
     @property
     def comments_count(self) -> int:
-        return len(self.comments)
+        import warnings
+        warnings.warn(
+            "comments_count property relies on noload relationship. "
+            "Use selectinload(PlanBlock.comments) or call get_comments_count().",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.get_comments_count()

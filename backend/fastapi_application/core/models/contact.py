@@ -63,7 +63,6 @@ class Contact(Base, IdIntPkMixin):
 
     user: Mapped["User"] = relationship(
         back_populates="contacts",
-        lazy="joined",
     )
     deals: Mapped[list["Deal"]] = relationship(
         back_populates="contact",

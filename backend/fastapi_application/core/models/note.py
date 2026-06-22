@@ -50,11 +50,9 @@ class Note(Base, IdIntPkMixin):
 
     user: Mapped["User"] = relationship(
         back_populates="notes",
-        lazy="joined",
     )
     project: Mapped["Project | None"] = relationship(
         back_populates="notes",
-        lazy="joined",
     )
     tags: Mapped[list["Tag"]] = relationship(
         secondary="note_tags",

@@ -63,7 +63,6 @@ class BusinessPlan(Base, IdIntPkMixin):
     # Связи
     user: Mapped["User"] = relationship(
         back_populates="business_plans",
-        lazy="joined",
     )
     blocks: Mapped[list["PlanBlock"]] = relationship(
         back_populates="business_plan",

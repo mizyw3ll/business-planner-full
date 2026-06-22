@@ -95,5 +95,4 @@ class CurrencyRate(Base, IdIntPkMixin):
 
     currency: Mapped["Currency"] = relationship(
         back_populates="rates",
-        lazy="joined",
     )

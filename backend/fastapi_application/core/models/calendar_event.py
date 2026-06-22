@@ -54,5 +54,4 @@ class CalendarEvent(Base, IdIntPkMixin):
 
     user: Mapped["User"] = relationship(
         back_populates="calendar_events",
-        lazy="joined",
     )
