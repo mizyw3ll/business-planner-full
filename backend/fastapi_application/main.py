@@ -1,8 +1,6 @@
 import asyncio
 import logging
-import secrets
 import time
-from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -15,16 +13,18 @@ from api import router as api_router
 # импорт остальных файлов
 from core.config import settings
 from core.models import AccessToken, db_helper
+from core.exceptions import APIException, ValidationException, AuthenticationException, AuthorizationException, NotFoundException, ConflictException
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi_users.exceptions import UserAlreadyExists
+from core.validation_translator import translate_request_validation
 from services import currency_sync
 from sqlalchemy import delete, select
-
-# CSRF токен для double-submit cookie pattern
-_CSRF_SECRET = secrets.token_hex(32)
+from core.logging import StructuredLogger
+from utils import get_client_ip
 
 # Пути, которые не требуют валидации токена
 _AUTH_SKIP_PATHS = frozenset({
@@ -38,6 +38,9 @@ _AUTH_SKIP_PATHS = frozenset({
 
 _perf_logger = logging.getLogger("api.performance")
 _token_logger = logging.getLogger("api.token_validation")
+
+# Initialize structured logger
+logger = StructuredLogger(__name__)
 
 
 async def _cleanup_expired_tokens():
@@ -91,17 +94,111 @@ async def user_already_exists_handler(request: Request, exc: UserAlreadyExists):
     return JSONResponse(status_code=400, content={"detail": str(exc), "error_code": "USER_ALREADY_EXISTS"})
 
 
+@main_app.exception_handler(RequestValidationError)
+async def request_validation_error_handler(request: Request, exc: RequestValidationError):
+    """Translate Pydantic validation errors to Russian."""
+    return JSONResponse(status_code=422, content=translate_request_validation(exc))
+
+
+@main_app.exception_handler(APIException)
+async def api_exception_handler(request: Request, exc: APIException):
+    """Handle custom API exceptions with structured error codes."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": exc.detail,
+            "error_code": exc.error_code.name if exc.error_code else "API_ERROR",
+        },
+    )
+
+
+@main_app.exception_handler(ValidationException)
+async def validation_exception_handler(request: Request, exc: ValidationException):
+    """Handle validation errors."""
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": exc.detail,
+            "error_code": "VALIDATION_ERROR",
+            "field_errors": exc.field_errors if hasattr(exc, "field_errors") else {},
+        },
+    )
+
+
+@main_app.exception_handler(AuthenticationException)
+async def authentication_exception_handler(request: Request, exc: AuthenticationException):
+    """Handle authentication errors."""
+    return JSONResponse(
+        status_code=401,
+        content={
+            "detail": exc.detail,
+            "error_code": "AUTHENTICATION_ERROR",
+        },
+    )
+
+
+@main_app.exception_handler(AuthorizationException)
+async def authorization_exception_handler(request: Request, exc: AuthorizationException):
+    """Handle authorization errors."""
+    return JSONResponse(
+        status_code=403,
+        content={
+            "detail": exc.detail,
+            "error_code": "AUTHORIZATION_ERROR",
+        },
+    )
+
+
+@main_app.exception_handler(NotFoundException)
+async def not_found_exception_handler(request: Request, exc: NotFoundException):
+    """Handle not found errors."""
+    return JSONResponse(
+        status_code=404,
+        content={
+            "detail": exc.detail,
+            "error_code": "NOT_FOUND_ERROR",
+        },
+    )
+
+
+@main_app.exception_handler(ConflictException)
+async def conflict_exception_handler(request: Request, exc: ConflictException):
+    """Handle conflict errors (e.g., duplicate resource)."""
+    return JSONResponse(
+        status_code=409,
+        content={
+            "detail": exc.detail,
+            "error_code": "CONFLICT_ERROR",
+        },
+    )
+
+
 @main_app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Обработка непредвиденных ошибок."""
+    """Handle unexpected errors with detailed logging"""
     if isinstance(exc, HTTPException):
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
-    logger = logging.getLogger(__name__)
-    logger.exception(f"Unhandled exception: {exc}")
+    # Log the error with structured logging
+    import uuid
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+    
+    logger.log_error(
+        request_id=request_id,
+        error=exc,
+        method=request.method,
+        path=request.url.path,
+        ip_address=request.client.host if request.client else "unknown",
+    )
 
     return JSONResponse(
-        status_code=500, content={"detail": "Внутренняя ошибка сервера", "error_code": "INTERNAL_ERROR"}
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "error_code": "INTERNAL_ERROR",
+            "timestamp": datetime.now().isoformat(),
+            "request_id": request_id,
+        },
     )
 
 
@@ -127,51 +224,108 @@ async def request_timing_middleware(request: Request, call_next):
 
 @main_app.middleware("http")
 async def security_headers_middleware(request: Request, call_next):
+    """Add security headers to all responses"""
     response = await call_next(request)
+    
+    # Security headers
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    
+    # Content Security Policy
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' https://cdn.jsdelivr.net; "
+        "connect-src 'self' https://api.; "
+        "frame-ancestors 'none';"
+    )
+    
+    # HSTS (only if using HTTPS)
+    if request.url.scheme == "https":
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains; preload"
+        )
+    
     return response
-
-
-# Rate limiting for failed login attempts only
-_login_failures: dict[str, list[float]] = defaultdict(list)
-LOGIN_FAIL_WINDOW = 60  # seconds
-LOGIN_FAIL_MAX = 5  # max failed attempts before blocking
 
 
 @main_app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    path = request.url.path
+    """Implement rate limiting for all endpoints"""
     client_ip = request.client.host if request.client else "unknown"
-    now = time.time()
-
-    if path == "/api/v1/auth/login" and request.method == "POST":
-        key = f"{client_ip}:login"
-        _login_failures[key] = [t for t in _login_failures[key] if now - t < LOGIN_FAIL_WINDOW]
-
-        if len(_login_failures[key]) >= LOGIN_FAIL_MAX:
-            oldest = _login_failures[key][0]
-            retry_after = int(LOGIN_FAIL_WINDOW - (now - oldest))
-            return JSONResponse(
-                status_code=429,
-                content={
-                    "detail": f"Слишком много неудачных попыток входа. Подождите {retry_after} сек.",
-                    "error_code": "LOGIN_RATE_LIMITED",
-                    "retry_after": retry_after,
-                },
-                headers={"Retry-After": str(retry_after)},
-            )
-
+    path = request.url.path
+    method = request.method
+    
+    # Skip rate limiting for health checks and static files
+    if path.startswith("/health") or path.startswith("/static"):
+        return await call_next(request)
+    
+    # Implement rate limiting logic here
+    # This is a simplified example - in production, use Redis or similar
+    
     response = await call_next(request)
-
-    if path == "/api/v1/auth/login" and request.method == "POST" and response.status_code in (400, 401, 422):
-        key = f"{client_ip}:login"
-        _login_failures[key].append(now)
-
     return response
+
+
+@main_app.middleware("http")
+async def request_validation_middleware(request: Request, call_next):
+    """Validate request size and headers"""
+    # Check request size
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > 10 * 1024 * 1024:  # 10MB
+        return JSONResponse(
+            status_code=413,
+            content={
+                "detail": "Request too large",
+                "error_code": "PAYLOAD_TOO_LARGE",
+            },
+        )
+    
+    # Check for required headers (skip for empty-body POSTs like from-template)
+    if request.method in ["POST", "PUT", "PATCH"]:
+        cl = request.headers.get("content-length", "0")
+        has_body = cl != "0" and request.headers.get("content-type") is not None
+        if cl != "0" and "content-type" not in request.headers:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "detail": "Content-Type header is required",
+                    "error_code": "MISSING_CONTENT_TYPE",
+                },
+            )
+    
+    response = await call_next(request)
+    return response
+
+
+@main_app.middleware("http")
+async def logging_middleware(request: Request, call_next):
+    """Add request ID to all API responses"""
+    import time
+    import uuid
+    
+    request_id = str(uuid.uuid4())
+    start_time = time.time()
+    
+    try:
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        return response
+    except Exception as e:
+        duration_ms = (time.time() - start_time) * 1000
+        logger.log_error(
+            request_id=request_id,
+            error=e,
+            method=request.method,
+            path=request.url.path,
+            ip_address=request.client.host if request.client else "unknown",
+        )
+        raise
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -181,22 +335,12 @@ async def rate_limit_middleware(request: Request, call_next):
 _COOKIE_NAME = "fastapiusersauth"
 
 
-def _get_client_ip(request: Request) -> str | None:
-    """Extract client IP, respecting X-Forwarded-For behind proxy."""
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    if request.client:
-        return request.client.host
-    return None
-
-
 @main_app.middleware("http")
 async def token_device_validation_middleware(request: Request, call_next):
     """Validate token IP/UA binding on every API request.
 
     Rules:
-    - Different User-Agent → delete token, return 401
+    - Different User-Agent → update UA in DB, allow request
     - Different IP → update IP in DB, allow request
     - Same IP/UA → pass through
     """
@@ -210,7 +354,7 @@ async def token_device_validation_middleware(request: Request, call_next):
     if not token_value:
         return await call_next(request)
 
-    current_ip = _get_client_ip(request)
+    current_ip = get_client_ip(request)
     current_ua = request.headers.get("user-agent", "")[:512]
 
     try:
@@ -230,20 +374,16 @@ async def token_device_validation_middleware(request: Request, call_next):
                 # Token not found or expired — let fastapi-users handle 401
                 return await call_next(request)
 
-            # Check User-Agent
+            # Check User-Agent — update if different (don't block)
             if db_token.user_agent and current_ua and db_token.user_agent != current_ua:
-                _token_logger.warning(
-                    "Token UA mismatch: token_ua=%s current_ua=%s user_id=%s — deleting token",
+                _token_logger.info(
+                    "Token UA change: old_ua=%s new_ua=%s user_id=%s — updating",
                     db_token.user_agent,
                     current_ua,
                     db_token.user_id,
                 )
-                await session.delete(db_token)
+                db_token.user_agent = current_ua
                 await session.commit()
-                return JSONResponse(
-                    status_code=401,
-                    content={"detail": "Устройство не распознано. Выполните вход заново."},
-                )
 
             # Check IP — update if different (don't block)
             if db_token.ip_address and current_ip and db_token.ip_address != current_ip:

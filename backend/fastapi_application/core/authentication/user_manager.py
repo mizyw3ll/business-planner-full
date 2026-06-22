@@ -175,13 +175,13 @@ class CustomUserManager(
         """После успешного сброса пароля"""
         log.info("Password reset completed for user %r", user.id)
         try:
-            from datetime import datetime
+            from datetime import UTC, datetime
 
             ip = request.client.host if request and request.client else ""
             await self.email_service.send_password_changed_notification(
                 to=user.email,
                 username=user.username,
-                changed_at=datetime.utcnow().isoformat(),
+                changed_at=datetime.now(UTC).isoformat(),
                 ip_address=ip,
                 session=self.user_db.session,  # type: ignore[attr-defined]
                 email_type="password_changed",

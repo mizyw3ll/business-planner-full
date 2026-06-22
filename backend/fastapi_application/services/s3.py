@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+from functools import partial
 from typing import TYPE_CHECKING
 
 from aiobotocore.session import get_session
@@ -94,7 +96,7 @@ class LocalStorage:
     async def put_object(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> None:
         path = self._path(key)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(data)
+        await asyncio.to_thread(path.write_bytes, data)
 
     async def get_object(self, key: str) -> tuple[bytes, str]:
         import mimetypes
@@ -102,27 +104,32 @@ class LocalStorage:
         path = self._path(key)
         if not path.is_file():
             raise FileNotFoundError(f"File not found: {key}")
-        data = path.read_bytes()
+        data = await asyncio.to_thread(path.read_bytes)
         content_type = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
         return data, content_type
 
     async def delete_object(self, key: str) -> None:
         path = self._path(key)
         if path.is_file():
-            path.unlink()
+            await asyncio.to_thread(path.unlink)
 
     async def head_object(self, key: str) -> dict | None:
         path = self._path(key)
-        return {"ContentLength": path.stat().st_size} if path.is_file() else None
+        def _stat():
+            return path.stat().st_size if path.is_file() else None
+        size = await asyncio.to_thread(_stat)
+        return {"ContentLength": size} if size is not None else None
 
     async def list_objects(self, prefix: str = "") -> list[str]:
-        results = []
-        for p in self.root.rglob("*"):
-            if p.is_file():
-                rel = str(p.relative_to(self.root)).replace("\\", "/")
-                if rel.startswith(prefix):
-                    results.append(rel)
-        return results
+        def _scan():
+            results = []
+            for p in self.root.rglob("*"):
+                if p.is_file():
+                    rel = str(p.relative_to(self.root)).replace("\\", "/")
+                    if rel.startswith(prefix):
+                        results.append(rel)
+            return results
+        return await asyncio.to_thread(_scan)
 
 
 def create_storage() -> S3Storage | LocalStorage:

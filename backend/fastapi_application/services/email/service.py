@@ -1,7 +1,7 @@
 # services/email/service.py
 import logging
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from core.config import settings
@@ -97,7 +97,7 @@ class EmailService:
             if email_log is not None:
                 email_log.status = "sent"
                 email_log.message_id = message_id
-                email_log.sent_at = datetime.utcnow()
+                email_log.sent_at = datetime.now(UTC)
             return message_id
         except Exception as e:
             if email_log is not None:
