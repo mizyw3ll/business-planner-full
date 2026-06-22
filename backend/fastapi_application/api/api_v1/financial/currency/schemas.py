@@ -1,10 +1,8 @@
 from datetime import datetime
 
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-)
+from pydantic import ConfigDict, Field
+
+from core.types import BaseModel
 
 
 class CurrencyBase(BaseModel):

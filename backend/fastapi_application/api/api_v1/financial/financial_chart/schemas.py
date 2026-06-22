@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
+
+from core.types import BaseModel
 
 from api.api_v1.financial.chart_point.schemas import ChartPointRead
 

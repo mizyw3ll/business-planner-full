@@ -2,7 +2,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
+
+from core.types import BaseModel
 
 
 class ChartPointBase(BaseModel):

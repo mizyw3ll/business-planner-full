@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from core.types import BaseModel
 
 # ── Contact ──
 

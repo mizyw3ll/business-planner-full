@@ -1,6 +1,8 @@
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
+
+from core.types import BaseModel
 
 
 class TemplateBase(BaseModel):

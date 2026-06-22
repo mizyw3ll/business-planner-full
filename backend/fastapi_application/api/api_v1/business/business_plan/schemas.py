@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 
+from core.types import BaseModel
 from api.api_v1.business.plan_block.schemas import PlanBlockRead
 from api.api_v1.tags.schemas import TagRead
 

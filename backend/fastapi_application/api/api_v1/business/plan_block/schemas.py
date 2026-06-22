@@ -1,8 +1,9 @@
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
 
+from core.types import BaseModel
 from api.api_v1.tags.schemas import TagRead
 
 
@@ -30,7 +31,7 @@ class ReorderBlocksRequest(BaseModel):
     @classmethod
     def validate_new_order(cls, v: list[int]) -> list[int]:
         if not v:
-            raise ValueError("new_order не может быть пустым")
+            raise ValueError("Порядок блоков не может быть пустым")
         return v
 
 

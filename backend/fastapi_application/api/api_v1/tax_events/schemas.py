@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from core.types import BaseModel
 
 NOTIFY_OPTIONS: list[dict] = [
     {"value": 0, "label": "Не уведомлять"},
