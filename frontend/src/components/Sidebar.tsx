@@ -18,6 +18,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../features/auth/AuthContext";
 import type { SettingsTab } from "../context/SettingsContext";
 import { LogoutConfirmModal } from "./LogoutConfirmModal";
+import { prefetchRoute } from "../lib/prefetch";
 
 type SidebarProps = {
   open: boolean;
@@ -191,6 +192,7 @@ function NavButton({
     <NavLink
       to={to}
       onClick={onNavigate}
+      onMouseEnter={() => prefetchRoute(to)}
       className={({ isActive }) =>
         `flex h-12 items-center rounded-2xl px-4 transition-all duration-300 group ${
           isActive

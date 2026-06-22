@@ -89,6 +89,35 @@ function canSaveBlock(form: BlockModalProps["form"]): boolean {
   return form.content.trim().length > 0;
 }
 
+function getValidationHint(form: BlockModalProps["form"]): string | null {
+  if (!form.title.trim()) return ru.blocks.validation.titleRequired;
+  if (form.block_type === "swot") {
+    const data = form.rich_content as { strengths?: string[]; weaknesses?: string[]; opportunities?: string[]; threats?: string[] };
+    const hasAny = Object.values(data ?? {}).some((arr) => arr?.some((s) => s.trim()));
+    if (!hasAny) return ru.blocks.validation.swotEmpty;
+  }
+  if (form.block_type === "timeline") {
+    const data = form.rich_content as { milestones?: { title?: string }[] };
+    if (!(data?.milestones?.some((m) => m.title?.trim()) ?? false)) return ru.blocks.validation.timelineEmpty;
+  }
+  if (form.block_type === "metrics") {
+    const data = form.rich_content as { metrics?: { label?: string; value?: string }[] };
+    if (!(data?.metrics?.some((m) => m.label?.trim() || m.value?.trim()) ?? false)) return ru.blocks.validation.metricsEmpty;
+  }
+  if (form.block_type === "chart_embed" && form.linked_financial_chart_ids.length === 0) {
+    return ru.blocks.validation.chartNotSelected;
+  }
+  if (form.block_type === "markdown") {
+    if (((form.rich_content as { markdown?: string })?.markdown ?? "").trim().length === 0) return ru.blocks.validation.markdownEmpty;
+  }
+  if (form.block_type === "checklist") {
+    const data = form.rich_content as { items?: { text?: string }[] };
+    if (!(data?.items?.some((i) => i.text?.trim()) ?? false)) return ru.blocks.validation.checklistEmpty;
+  }
+  if (!isRichBlock(form.block_type) && form.content.trim().length === 0) return ru.blocks.validation.contentRequired;
+  return null;
+}
+
 export function BlockModal({
   open,
   title,
@@ -401,7 +430,14 @@ export function BlockModal({
             onMouseLeave={(e) => {
               e.currentTarget.style.opacity = "1";
             }}
-            onClick={onSave}
+            onClick={() => {
+              if (!canSave) {
+                const hint = getValidationHint(form);
+                if (hint) toast.error(hint);
+                return;
+              }
+              onSave();
+            }}
           >
             {ru.common.save}
           </button>

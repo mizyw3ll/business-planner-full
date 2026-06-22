@@ -1,8 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 
 export type VisualSettings = {
-  auroraOrbs: boolean;
-  particles: boolean;
   gridOverlay: boolean;
 };
 
@@ -12,12 +10,10 @@ type VisualSettingsContextType = {
 };
 
 const defaults: VisualSettings = {
-  auroraOrbs: true,
-  particles: true,
   gridOverlay: true,
 };
 
-const STORAGE_KEY = "visual-settings";
+const STORAGE_KEY = "visual-settings-v2";
 
 function loadSettings(): VisualSettings {
   try {
@@ -42,10 +38,6 @@ export function VisualSettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     saveSettings(settings);
     const root = document.documentElement;
-    if (!settings.auroraOrbs) root.classList.add("no-aurora");
-    else root.classList.remove("no-aurora");
-    if (!settings.particles) root.classList.add("no-particles");
-    else root.classList.remove("no-particles");
     if (!settings.gridOverlay) root.classList.add("no-grid");
     else root.classList.remove("no-grid");
   }, [settings]);

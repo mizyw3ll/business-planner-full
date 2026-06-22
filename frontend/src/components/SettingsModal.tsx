@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
   Moon,
   Sun,
   X,
-  MousePointer2,
   Shield,
   FileCheck,
   Cookie,
@@ -14,17 +13,19 @@ import {
   CheckCircle,
   Loader2,
   Eye,
-  Sparkles,
+  EyeOff,
   Grid3x3,
+  Wand2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useModalRegistration } from "../hooks/useModalOpen";
 import { useTheme } from "../features/theme/ThemeContext";
 import { useAuth } from "../features/auth/AuthContext";
-import { useVisualPreferences } from "../context/VisualPreferencesContext";
+
 import { useVisualSettings } from "../features/settings/VisualSettingsContext";
 import { deleteUserApi } from "../api";
 import { requestVerification, changePassword } from "../features/auth/authApi";
+import { extractApiError } from "../shared/utils/extractApiError";
 import { ConfirmModal } from "./ConfirmModal";
 import { LogoutConfirmModal } from "./LogoutConfirmModal";
 import type { SettingsTab } from "../context/SettingsContext";
@@ -333,7 +334,6 @@ function ThemeBtn({
 }
 
 function AppearancePanel() {
-  const { preferences, setPreference } = useVisualPreferences();
   const { settings, toggle } = useVisualSettings();
 
   return (
@@ -346,27 +346,6 @@ function AppearancePanel() {
           Эффекты интерфейса
         </p>
         <div className="space-y-4">
-          <PreferenceToggle
-            icon={<MousePointer2 size={20} />}
-            title="Свечение курсора"
-            desc="Фон мягко следует за движениями вашего курсора"
-            active={preferences.antigravity}
-            onToggle={(v) => setPreference("antigravity", v)}
-          />
-          <PreferenceToggle
-            icon={<Sparkles size={20} />}
-            title="Световые орбы"
-            desc="Анимированные градиентные сферы на фоне"
-            active={settings.auroraOrbs}
-            onToggle={() => toggle("auroraOrbs")}
-          />
-          <PreferenceToggle
-            icon={<Eye size={20} />}
-            title="Частицы"
-            desc="Плавающие светящиеся точки"
-            active={settings.particles}
-            onToggle={() => toggle("particles")}
-          />
           <PreferenceToggle
             icon={<Grid3x3 size={20} />}
             title="Сетка"
@@ -484,11 +463,69 @@ function EmailVerification({ user }: { user: { email?: string | null; is_verifie
   );
 }
 
+function passwordStrength(password: string) {
+  const checks = [
+    password.length >= 8,
+    /[A-Z]/.test(password),
+    /[a-z]/.test(password),
+    /\d/.test(password),
+    /[^A-Za-z0-9]/.test(password),
+  ];
+  const score = checks.filter(Boolean).length;
+  if (score <= 2) return { label: "Слабый", color: "#ef4444", width: "33%", score };
+  if (score <= 4) return { label: "Средний", color: "#f59e0b", width: "66%", score };
+  return { label: "Сильный", color: "#10b981", width: "100%", score };
+}
+
+function generatePassword(): string {
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const digits = "0123456789";
+  const special = "!@#$%^&*";
+  const all = upper + lower + digits + special;
+  const required = [upper, lower, digits, special].map((s) => s[Math.floor(Math.random() * s.length)]);
+  const rest = Array.from({ length: 12 }, () => all[Math.floor(Math.random() * all.length)]);
+  return [...required, ...rest].sort(() => Math.random() - 0.5).join("");
+}
+
+function PasswordStrengthBar({ password }: { password: string }) {
+  const strength = passwordStrength(password);
+  if (!password) return null;
+
+  return (
+    <div className="mt-1.5 space-y-1">
+      <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+        <div
+          className="h-full rounded-full transition-all duration-300"
+          style={{ width: strength.width, background: strength.color }}
+        />
+      </div>
+      <p className="text-[11px]" style={{ color: strength.color }}>{strength.label}</p>
+    </div>
+  );
+}
+
 function ChangePasswordForm() {
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showOld, setShowOld] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const newPasswordError = useMemo(() => {
+    if (!newPassword) return "";
+    const checks = [
+      newPassword.length >= 8,
+      /[A-Z]/.test(newPassword),
+      /[a-z]/.test(newPassword),
+      /\d/.test(newPassword),
+      /[^A-Za-z0-9]/.test(newPassword),
+    ];
+    if (!checks.every(Boolean)) return "Минимум 8 символов: заглавная, строчная, цифра, спецсимвол";
+    return "";
+  }, [newPassword]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -496,8 +533,8 @@ function ChangePasswordForm() {
       toast.error("Пароли не совпадают");
       return;
     }
-    if (newPassword.length < 8) {
-      toast.error("Пароль должен быть не менее 8 символов");
+    if (newPasswordError) {
+      toast.error(newPasswordError);
       return;
     }
     setLoading(true);
@@ -508,11 +545,17 @@ function ChangePasswordForm() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: any) {
-      const msg = err?.response?.data?.detail || "Не удалось изменить пароль";
+      const msg = extractApiError(err, "Не удалось изменить пароль");
       toast.error(msg);
     } finally {
       setLoading(false);
     }
+  }
+
+  function onGenerate() {
+    const pwd = generatePassword();
+    setNewPassword(pwd);
+    setConfirmPassword(pwd);
   }
 
   return (
@@ -527,55 +570,111 @@ function ChangePasswordForm() {
           Смена пароля
         </p>
       </div>
-      <input
-        type="password"
-        placeholder="Текущий пароль"
-        value={oldPassword}
-        onChange={(e) => setOldPassword(e.target.value)}
-        required
-        className="w-full rounded-xl px-4 py-3 text-sm outline-none"
-        style={{
-          border: "1px solid var(--border-primary)",
-          background: "var(--bg-input)",
-          color: "var(--text-primary)",
-        }}
-      />
-      <input
-        type="password"
-        placeholder="Новый пароль (минимум 8 символов)"
-        value={newPassword}
-        onChange={(e) => setNewPassword(e.target.value)}
-        required
-        minLength={8}
-        className="w-full rounded-xl px-4 py-3 text-sm outline-none"
-        style={{
-          border: "1px solid var(--border-primary)",
-          background: "var(--bg-input)",
-          color: "var(--text-primary)",
-        }}
-      />
-      <input
-        type="password"
-        placeholder="Повторите новый пароль"
-        value={confirmPassword}
-        onChange={(e) => setConfirmPassword(e.target.value)}
-        required
-        minLength={8}
-        className="w-full rounded-xl px-4 py-3 text-sm outline-none"
-        style={{
-          border: "1px solid var(--border-primary)",
-          background: "var(--bg-input)",
-          color: "var(--text-primary)",
-        }}
-      />
-      <button
-        type="submit"
-        disabled={loading || !oldPassword || !newPassword || !confirmPassword}
-        className="w-full rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-50"
-        style={{ border: "1px solid var(--border-secondary)", background: "var(--bg-hover)" }}
-      >
-        {loading ? <Loader2 size={16} className="animate-spin inline" /> : "Изменить пароль"}
-      </button>
+      <div className="relative">
+        <input
+          type={showOld ? "text" : "password"}
+          placeholder="Текущий пароль"
+          value={oldPassword}
+          onChange={(e) => setOldPassword(e.target.value)}
+          required
+          autoComplete="current-password"
+          className="w-full rounded-xl px-4 py-3 text-sm outline-none pr-10"
+          style={{
+            border: "1px solid var(--border-primary)",
+            background: "var(--bg-input)",
+            color: "var(--text-primary)",
+          }}
+        />
+        <button
+          type="button"
+          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors hover:bg-white/5"
+          style={{ color: "var(--text-muted)" }}
+          onClick={() => setShowOld((p) => !p)}
+          tabIndex={-1}
+        >
+          {showOld ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      </div>
+      <div>
+        <div className="relative">
+          <input
+            type={showNew ? "text" : "password"}
+            placeholder="Новый пароль"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+            minLength={8}
+            autoComplete="new-password"
+            className="w-full rounded-xl px-4 py-3 text-sm outline-none pr-10"
+            style={{
+              border: `1px solid ${newPasswordError ? "#ef4444" : "var(--border-primary)"}`,
+              background: "var(--bg-input)",
+              color: "var(--text-primary)",
+            }}
+          />
+          <button
+            type="button"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors hover:bg-white/5"
+            style={{ color: "var(--text-muted)" }}
+            onClick={() => setShowNew((p) => !p)}
+            tabIndex={-1}
+          >
+            {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        </div>
+        <PasswordStrengthBar password={newPassword} />
+        {newPasswordError && (
+          <p className="mt-1 text-xs" style={{ color: "#ef4444" }}>{newPasswordError}</p>
+        )}
+      </div>
+      <div className="relative">
+        <input
+          type={showConfirm ? "text" : "password"}
+          placeholder="Повторите новый пароль"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+          minLength={8}
+          autoComplete="new-password"
+          className="w-full rounded-xl px-4 py-3 text-sm outline-none pr-10"
+          style={{
+            border: `1px solid ${confirmPassword && confirmPassword !== newPassword ? "#ef4444" : "var(--border-primary)"}`,
+            background: "var(--bg-input)",
+            color: "var(--text-primary)",
+          }}
+        />
+        <button
+          type="button"
+          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors hover:bg-white/5"
+          style={{ color: "var(--text-muted)" }}
+          onClick={() => setShowConfirm((p) => !p)}
+          tabIndex={-1}
+        >
+          {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      </div>
+      {confirmPassword && confirmPassword !== newPassword && (
+        <p className="text-xs" style={{ color: "#ef4444" }}>Пароли не совпадают</p>
+      )}
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={loading || !oldPassword || !newPassword || !confirmPassword}
+          className="flex-1 rounded-xl py-3 text-sm font-bold transition-all disabled:opacity-50"
+          style={{ border: "1px solid var(--border-secondary)", background: "var(--bg-hover)" }}
+        >
+          {loading ? <Loader2 size={16} className="animate-spin inline" /> : "Изменить пароль"}
+        </button>
+        <button
+          type="button"
+          onClick={onGenerate}
+          className="rounded-xl px-3 py-3 transition-all hover:bg-white/5"
+          style={{ border: "1px solid var(--border-muted)" }}
+          title="Сгенерировать пароль"
+        >
+          <Wand2 size={16} style={{ color: "var(--text-muted)" }} />
+        </button>
+      </div>
     </form>
   );
 }

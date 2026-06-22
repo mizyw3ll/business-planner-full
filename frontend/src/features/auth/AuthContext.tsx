@@ -28,23 +28,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadMe = useCallback(async () => {
-    try {
-      const cached = queryClient.getQueryData<User>(queryKeys.user);
-      const me = cached ?? (await authApi.me());
-      queryClient.setQueryData(queryKeys.user, me);
-      setUser(me);
-    } catch {
-      queryClient.removeQueries({ queryKey: queryKeys.user });
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [queryClient]);
-
   useEffect(() => {
-    void loadMe();
-  }, [loadMe]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const cached = queryClient.getQueryData<User>(queryKeys.user);
+        const me = cached ?? (await authApi.me());
+        if (!cancelled) {
+          queryClient.setQueryData(queryKeys.user, me);
+          setUser(me);
+        }
+      } catch {
+        if (!cancelled) {
+          queryClient.removeQueries({ queryKey: queryKeys.user });
+          setUser(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [queryClient]);
 
   const signin = useCallback(
     async (login: string, password: string) => {

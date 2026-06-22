@@ -61,9 +61,9 @@ function SwotRenderer({ block }: { block: PlanBlock }) {
 
 /* ─── Timeline ─── */
 function TimelineRenderer({ block }: { block: PlanBlock }) {
-  const events =
-    (block.rich_content as { events?: { date: string; title: string; description?: string }[] })?.events ?? [];
-  const valid = events.filter((e) => e.title.trim());
+  const milestones =
+    (block.rich_content as { milestones?: { date: string; title: string; description?: string }[] })?.milestones ?? [];
+  const valid = milestones.filter((e) => e.title.trim());
   if (valid.length === 0)
     return (
       <p className="mt-2 text-xs" style={{ color: v("text-muted") }}>

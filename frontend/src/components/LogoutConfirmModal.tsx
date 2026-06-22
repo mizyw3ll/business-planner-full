@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { useModalRegistration } from "../hooks/useModalOpen";
 
 interface LogoutConfirmModalProps {
   isOpen: boolean;
@@ -7,6 +8,7 @@ interface LogoutConfirmModalProps {
 }
 
 export function LogoutConfirmModal({ isOpen, onClose, onConfirm }: LogoutConfirmModalProps) {
+  useModalRegistration(isOpen);
   if (!isOpen) return null;
 
   return (

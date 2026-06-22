@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { Tag } from "../api";
 
 const TAG_COLORS = [
@@ -21,7 +22,7 @@ interface TagChipProps {
   size?: "sm" | "md";
 }
 
-export function TagChip({ tag, onClick, onRemove, removable = false, size = "md" }: TagChipProps) {
+export const TagChip = memo(function TagChip({ tag, onClick, onRemove, removable = false, size = "md" }: TagChipProps) {
   const colorClass = TAG_COLORS[tag.color_idx % TAG_COLORS.length];
   const sizeClasses = size === "sm" ? "px-2 py-0.5 text-xs" : "px-2.5 py-1 text-sm";
 
@@ -49,4 +50,4 @@ export function TagChip({ tag, onClick, onRemove, removable = false, size = "md"
       )}
     </span>
   );
-}
+});

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import type { Tag } from "../api";
 import { createTagApi, deleteTagApi } from "../api";
 import { useTagsQuery } from "../hooks/useCachedData";
@@ -63,7 +64,7 @@ export function TagPicker({ selectedTags, onChange }: TagPickerProps) {
       onChange([...selectedTags, tag]);
       setNewName("");
     } catch (e) {
-      console.error("Failed to create tag", e);
+      toast.error((e as any)?.userMessage || "Ошибка");
     }
   };
 
@@ -79,7 +80,7 @@ export function TagPicker({ selectedTags, onChange }: TagPickerProps) {
       await queryClient.invalidateQueries({ queryKey: queryKeys.tags });
       onChange(selectedTags.filter((t) => t.id !== deleteTarget.id));
     } catch (err) {
-      console.error("Failed to delete tag", err);
+      toast.error((err as any)?.userMessage || "Ошибка");
     } finally {
       setDeleteTarget(null);
     }

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -46,11 +47,11 @@ const mdComponents = {
   img: ({ src, alt, ...props }: any) => <img src={src} alt={alt || ""} className="max-w-full rounded my-1" {...props} />,
 };
 
-export function MarkdownPreview({ content, className = "" }: MarkdownPreviewProps) {
+export const MarkdownPreview = memo(function MarkdownPreview({ content, className = "" }: MarkdownPreviewProps) {
   const html = highlightMdToHtml(content);
   return (
     <div className={className}>
       <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={mdComponents}>{html}</Markdown>
     </div>
   );
-}
+});

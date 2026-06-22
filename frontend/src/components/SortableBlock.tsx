@@ -43,7 +43,7 @@ export function SortableBlock({
         background: isDark ? theme.colors.dark.bg.secondary : theme.colors.light.bg.secondary,
         border: `1px solid ${isDark ? theme.colors.dark.border.primary : theme.colors.light.border.primary}`,
       }}
-      className="rounded-2xl border p-4 overflow-hidden"
+      className="rounded-2xl border p-4 overflow-hidden touch-none"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
