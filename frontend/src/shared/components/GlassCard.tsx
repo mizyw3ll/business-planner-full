@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { ReactNode, CSSProperties } from "react";
 import clsx from "clsx";
 
@@ -56,7 +57,7 @@ const paddingMap: Record<string, string> = {
   none: "p-0",
 };
 
-export function GlassCard({
+export const GlassCard = memo(function GlassCard({
   children,
   className,
   accent = "indigo",
@@ -129,4 +130,4 @@ export function GlassCard({
       {content}
     </div>
   );
-}
+});

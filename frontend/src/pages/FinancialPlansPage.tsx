@@ -66,8 +66,8 @@ export function FinancialPlansPage() {
       toast.success("План создан");
       setOpenForm(false);
       await queryClient.invalidateQueries({ queryKey: queryKeys.financialPlans });
-    } catch {
-      toast.error("Ошибка сохранения финансового плана");
+    } catch (err: any) {
+      toast.error(err?.userMessage || "Ошибка сохранения финансового плана");
     }
   }
 

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Plus,
@@ -11,7 +11,6 @@ import {
   Target,
   TrendingUp,
   Users,
-  X,
   Search,
   ChevronDown,
 } from "lucide-react";
@@ -33,23 +32,11 @@ import { useTheme } from "../features/theme/ThemeContext";
 import { useContactsQuery, useDealsQuery, usePipelineStatsQuery } from "../hooks/useCachedData";
 import { queryKeys } from "../lib/queryClient";
 import { ConfirmModal } from "../components/ConfirmModal";
-
-const DEAL_STATUSES = [
-  { value: "new", label: "Новая", color: "#3b82f6" },
-  { value: "qualified", label: "Квалификация", color: "#eab308" },
-  { value: "proposal", label: "Предложение", color: "#f97316" },
-  { value: "negotiation", label: "Переговоры", color: "#a855f7" },
-  { value: "won", label: "Выиграна", color: "#22c55e" },
-  { value: "lost", label: "Проиграна", color: "#ef4444" },
-];
-
-const PRIORITIES = [
-  { value: "low", label: "Низкий", color: "#9ca3af" },
-  { value: "medium", label: "Средний", color: "#eab308" },
-  { value: "high", label: "Высокий", color: "#ef4444" },
-];
-
-type Tab = "contacts" | "deals" | "pipeline";
+import { useModalRegistration } from "../hooks/useModalOpen";
+import { DEAL_STATUSES, PRIORITIES, type Tab } from "./crm/CrmPage.constants";
+import { ContactFormModal } from "./crm/ContactFormModal";
+import { DealFormModal } from "./crm/DealFormModal";
+import { PipelineView } from "./crm/PipelineView";
 
 export function CrmPage() {
   const { theme } = useTheme();
@@ -61,7 +48,9 @@ export function CrmPage() {
 
   const [tab, setTab] = useState<Tab>("contacts");
   const [showContactForm, setShowContactForm] = useState(false);
+  useModalRegistration(showContactForm);
   const [showDealForm, setShowDealForm] = useState(false);
+  useModalRegistration(showDealForm);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
 
@@ -171,7 +160,7 @@ export function CrmPage() {
       setShowContactForm(false);
       toast.success("Контакт создан");
     },
-    onError: () => toast.error("Ошибка при создании контакта"),
+    onError: (err: any) => toast.error(err?.userMessage || "Ошибка при создании контакта"),
   });
 
   const updateContactMut = useMutation({
@@ -192,7 +181,7 @@ export function CrmPage() {
       setEditingContact(null);
       toast.success("Контакт обновлён");
     },
-    onError: () => toast.error("Ошибка при обновлении"),
+    onError: (err: any) => toast.error(err?.userMessage || "Ошибка при обновлении"),
   });
 
   const deleteContactMut = useMutation({
@@ -201,7 +190,7 @@ export function CrmPage() {
       qc.invalidateQueries({ queryKey: queryKeys.contacts() });
       toast.success("Контакт удалён");
     },
-    onError: () => toast.error("Ошибка при удалении"),
+    onError: (err: any) => toast.error(err?.userMessage || "Ошибка при удалении"),
   });
 
   const createDealMut = useMutation({
@@ -223,7 +212,7 @@ export function CrmPage() {
       setShowDealForm(false);
       toast.success("Сделка создана");
     },
-    onError: () => toast.error("Ошибка при создании сделки"),
+    onError: (err: any) => toast.error(err?.userMessage || "Ошибка при создании сделки"),
   });
 
   const updateDealMut = useMutation({
@@ -246,7 +235,7 @@ export function CrmPage() {
       setEditingDeal(null);
       toast.success("Сделка обновлена");
     },
-    onError: () => toast.error("Ошибка при обновлении"),
+    onError: (err: any) => toast.error(err?.userMessage || "Ошибка при обновлении"),
   });
 
   const deleteDealMut = useMutation({
@@ -256,7 +245,7 @@ export function CrmPage() {
       qc.invalidateQueries({ queryKey: queryKeys.pipelineStats });
       toast.success("Сделка удалена");
     },
-    onError: () => toast.error("Ошибка при удалении"),
+    onError: (err: any) => toast.error(err?.userMessage || "Ошибка при удалении"),
   });
 
   function resetContactForm() {
@@ -406,33 +395,21 @@ export function CrmPage() {
       />
       <div className={tw.pageContainer}>
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold" style={{ color: v("text-primary") }}>
-            CRM
-          </h1>
+          <h1 className="text-2xl font-semibold" style={{ color: v("text-primary") }}>CRM</h1>
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => {
-                resetContactForm();
-                setEditingContact(null);
-                setShowContactForm(true);
-              }}
+              onClick={() => { resetContactForm(); setEditingContact(null); setShowContactForm(true); }}
               className={`${tw.buttonPrimary} flex items-center gap-2`}
             >
-              <Plus size={16} />
-              Контакт
+              <Plus size={16} /> Контакт
             </button>
             <button
               type="button"
-              onClick={() => {
-                resetDealForm();
-                setEditingDeal(null);
-                setShowDealForm(true);
-              }}
+              onClick={() => { resetDealForm(); setEditingDeal(null); setShowDealForm(true); }}
               className={`${tw.buttonPrimary} flex items-center gap-2`}
             >
-              <Plus size={16} />
-              Сделка
+              <Plus size={16} /> Сделка
             </button>
           </div>
         </div>
@@ -444,27 +421,15 @@ export function CrmPage() {
               type="button"
               onClick={() => setTab(t)}
               className={`flex items-center gap-2.5 rounded-2xl px-6 py-3 text-sm font-bold transition-all duration-300 active:scale-[0.96] ${
-                tab === t 
-                  ? "bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 text-white shadow-xl shadow-indigo-500/25 border-transparent" 
+                tab === t
+                  ? "bg-gradient-to-br from-indigo-500 via-indigo-600 to-violet-600 text-white shadow-xl shadow-indigo-500/25 border-transparent"
                   : "border-2 hover:bg-indigo-500/10"
               }`}
               style={tab !== t ? { borderColor: v("border-primary"), color: v("text-primary") } : {}}
             >
-              {t === "contacts" && (
-                <>
-                  <Users size={18} /> Контакты ({contacts.length})
-                </>
-              )}
-              {t === "deals" && (
-                <>
-                  <Target size={18} /> Сделки ({deals.length})
-                </>
-              )}
-              {t === "pipeline" && (
-                <>
-                  <TrendingUp size={18} /> Воронка
-                </>
-              )}
+              {t === "contacts" && <><Users size={18} /> Контакты ({contacts.length})</>}
+              {t === "deals" && <><Target size={18} /> Сделки ({deals.length})</>}
+              {t === "pipeline" && <><TrendingUp size={18} /> Воронка</>}
             </button>
           ))}
         </div>
@@ -473,11 +438,7 @@ export function CrmPage() {
           <>
             <div className="flex items-center gap-2">
               <div className="relative flex-1 max-w-xs">
-                <Search
-                  size={16}
-                  className="absolute left-3 top-1/2 -translate-y-1/2"
-                  style={{ color: v("text-tertiary") }}
-                />
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: v("text-tertiary") }} />
                 <input
                   type="text"
                   value={searchQuery}
@@ -499,39 +460,26 @@ export function CrmPage() {
                   <option value="created_at_desc">Сначала новые</option>
                   <option value="created_at_asc">Сначала старые</option>
                 </select>
-                <ChevronDown
-                  size={14}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
-                  style={{ color: v("text-muted") }}
-                />
+                <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: v("text-muted") }} />
               </div>
             </div>
             {filteredContacts.length === 0 ? (
-              <p className="text-sm" style={{ color: v("text-muted") }}>
-                {searchQuery ? "Ничего не найдено" : "Нет контактов"}
-              </p>
+              <p className="text-sm" style={{ color: v("text-muted") }}>{searchQuery ? "Ничего не найдено" : "Нет контактов"}</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredContacts.map((contact: Contact, i) => (
                   <div
                     key={contact.id}
-                    className={`animate-fade-in stagger-${
-                      (i % 6) + 1
-                    } rounded-xl border p-4 transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/5`}
+                    className={`animate-fade-in stagger-${(i % 6) + 1} rounded-xl border p-4 transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/5`}
                     style={cardStyle("note", isDark)}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
-                        <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center"
-                          style={{ background: v("bg-tertiary") }}
-                        >
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: v("bg-tertiary") }}>
                           <User size={18} style={{ color: v("text-muted") }} />
                         </div>
                         <div>
-                          <p className="font-semibold" style={{ color: v("text-primary") }}>
-                            {contact.name}
-                          </p>
+                          <p className="font-semibold" style={{ color: v("text-primary") }}>{contact.name}</p>
                           {contact.company && (
                             <p className="text-sm flex items-center gap-1" style={{ color: v("text-muted") }}>
                               <Building2 size={12} /> {contact.company}
@@ -540,43 +488,20 @@ export function CrmPage() {
                         </div>
                       </div>
                       {contact.is_lead && (
-                        <span
-                          className="rounded-full px-2 py-0.5 text-xs"
-                          style={{ background: "#3b82f6", color: "#fff" }}
-                        >
-                          Лид
-                        </span>
+                        <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: "#3b82f6", color: "#fff" }}>Лид</span>
                       )}
                     </div>
                     <div className="mt-3 space-y-1">
                       {contact.email && (
-                        <p className="text-sm flex items-center gap-1" style={{ color: v("text-muted") }}>
-                          <Mail size={12} /> {contact.email}
-                        </p>
+                        <p className="text-sm flex items-center gap-1" style={{ color: v("text-muted") }}><Mail size={12} /> {contact.email}</p>
                       )}
                       {contact.phone && (
-                        <p className="text-sm flex items-center gap-1" style={{ color: v("text-muted") }}>
-                          <Phone size={12} /> {contact.phone}
-                        </p>
+                        <p className="text-sm flex items-center gap-1" style={{ color: v("text-muted") }}><Phone size={12} /> {contact.phone}</p>
                       )}
                     </div>
                     <div className="mt-3 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEditContact(contact)}
-                        className="rounded-lg px-3 py-1 text-xs font-medium transition-colors"
-                        style={buttonStyle("secondary", isDark)}
-                      >
-                        Изменить
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget({ type: "contact", id: contact.id, title: contact.name })}
-                        className="rounded-lg px-3 py-1 text-xs font-medium transition-colors"
-                        style={buttonStyle("danger", isDark)}
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <button type="button" onClick={() => openEditContact(contact)} className="rounded-lg px-3 py-1 text-xs font-medium transition-colors" style={buttonStyle("secondary", isDark)}>Изменить</button>
+                      <button type="button" onClick={() => setDeleteTarget({ type: "contact", id: contact.id, title: contact.name })} className="rounded-lg px-3 py-1 text-xs font-medium transition-colors" style={buttonStyle("danger", isDark)}><Trash2 size={14} /></button>
                     </div>
                   </div>
                 ))}
@@ -589,11 +514,7 @@ export function CrmPage() {
           <>
             <div className="flex items-center gap-2">
               <div className="relative flex-1 max-w-xs">
-                <Search
-                  size={16}
-                  className="absolute left-3 top-1/2 -translate-y-1/2"
-                  style={{ color: v("text-tertiary") }}
-                />
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: v("text-tertiary") }} />
                 <input
                   type="text"
                   value={searchQuery}
@@ -615,84 +536,41 @@ export function CrmPage() {
                   <option value="created_at_desc">Сначала новые</option>
                   <option value="created_at_asc">Сначала старые</option>
                 </select>
-                <ChevronDown
-                  size={14}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
-                  style={{ color: v("text-muted") }}
-                />
+                <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: v("text-muted") }} />
               </div>
             </div>
             {filteredDeals.length === 0 ? (
-              <p className="text-sm" style={{ color: v("text-muted") }}>
-                {searchQuery ? "Ничего не найдено" : "Нет сделок"}
-              </p>
+              <p className="text-sm" style={{ color: v("text-muted") }}>{searchQuery ? "Ничего не найдено" : "Нет сделок"}</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredDeals.map((deal: Deal, i) => (
                   <div
                     key={deal.id}
-                    className={`animate-fade-in stagger-${
-                      (i % 6) + 1
-                    } rounded-xl border p-4 transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-amber-500/5`}
+                    className={`animate-fade-in stagger-${(i % 6) + 1} rounded-xl border p-4 transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-lg hover:shadow-amber-500/5`}
                     style={cardStyle("note", isDark)}
                   >
                     <div>
-                      <p className="font-semibold" style={{ color: v("text-primary") }}>
-                        {deal.title}
-                      </p>
+                      <p className="font-semibold" style={{ color: v("text-primary") }}>{deal.title}</p>
                       <div className="flex gap-2 mt-1">
-                        <span
-                          className="rounded-full px-2 py-0.5 text-xs text-white"
-                          style={{ background: getStatusColor(deal.status) }}
-                        >
-                          {getStatusLabel(deal.status)}
-                        </span>
-                        <span
-                          className="rounded-full px-2 py-0.5 text-xs text-white"
-                          style={{ background: getPriorityColor(deal.priority) }}
-                        >
-                          {getPriorityLabel(deal.priority)}
-                        </span>
+                        <span className="rounded-full px-2 py-0.5 text-xs text-white" style={{ background: getStatusColor(deal.status) }}>{getStatusLabel(deal.status)}</span>
+                        <span className="rounded-full px-2 py-0.5 text-xs text-white" style={{ background: getPriorityColor(deal.priority) }}>{getPriorityLabel(deal.priority)}</span>
                       </div>
                     </div>
                     {deal.value != null && (
-                      <p
-                        className="mt-2 text-sm font-medium flex items-center gap-1"
-                        style={{ color: v("text-primary") }}
-                      >
-                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-bold" style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e" }}>
-                          {getCurrencySymbol(deal.currency)}
-                        </span>
+                      <p className="mt-2 text-sm font-medium flex items-center gap-1" style={{ color: v("text-primary") }}>
+                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-bold" style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e" }}>{getCurrencySymbol(deal.currency)}</span>
                         {deal.value.toLocaleString()} {deal.currency}
                       </p>
                     )}
                     {deal.contact && (
-                      <p className="text-sm mt-1 flex items-center gap-1" style={{ color: v("text-muted") }}>
-                        <User size={12} /> {deal.contact.name}
-                      </p>
+                      <p className="text-sm mt-1 flex items-center gap-1" style={{ color: v("text-muted") }}><User size={12} /> {deal.contact.name}</p>
                     )}
                     {deal.due_date && (
-                      <p className="text-sm mt-1 flex items-center gap-1" style={{ color: v("text-muted") }}>
-                        <Calendar size={12} /> {deal.due_date}
-                      </p>
+                      <p className="text-sm mt-1 flex items-center gap-1" style={{ color: v("text-muted") }}><Calendar size={12} /> {deal.due_date}</p>
                     )}
                     <div className="mt-3 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEditDeal(deal)}
-                        className="rounded-lg px-3 py-1 text-xs font-medium transition-colors"
-                        style={buttonStyle("secondary", isDark)}
-                      >
-                        Изменить
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget({ type: "deal", id: deal.id, title: deal.title })}
-                        className="rounded-lg px-3 py-1 text-xs font-medium transition-colors"
-                        style={buttonStyle("danger", isDark)}
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <button type="button" onClick={() => openEditDeal(deal)} className="rounded-lg px-3 py-1 text-xs font-medium transition-colors" style={buttonStyle("secondary", isDark)}>Изменить</button>
+                      <button type="button" onClick={() => setDeleteTarget({ type: "deal", id: deal.id, title: deal.title })} className="rounded-lg px-3 py-1 text-xs font-medium transition-colors" style={buttonStyle("danger", isDark)}><Trash2 size={14} /></button>
                     </div>
                   </div>
                 ))}
@@ -701,370 +579,45 @@ export function CrmPage() {
           </>
         )}
 
-        {tab === "pipeline" && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div
-                className="animate-fade-in stagger-1 rounded-xl border p-4 text-center backdrop-blur-sm transition-all duration-200 hover:shadow-lg"
-                style={cardStyle("business", isDark)}
-              >
-                <p className="text-2xl font-bold" style={{ color: v("text-primary") }}>
-                  {stats?.total_deals || 0}
-                </p>
-                <p className="text-sm" style={{ color: v("text-muted") }}>
-                  Всего сделок
-                </p>
-              </div>
-              <div
-                className="animate-fade-in stagger-2 rounded-xl border p-4 text-center backdrop-blur-sm transition-all duration-200 hover:shadow-lg"
-                style={cardStyle("business", isDark)}
-              >
-                <p className="text-2xl font-bold" style={{ color: v("text-primary") }}>
-                  <span className="inline-flex items-center gap-1">
-                    {(stats?.total_value || 0).toLocaleString()}
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg text-xs font-bold" style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e" }}>₽</span>
-                  </span>
-                </p>
-                <p className="text-sm" style={{ color: v("text-muted") }}>
-                  Общая сумма
-                </p>
-              </div>
-              {DEAL_STATUSES.slice(0, 4).map((s, i) => (
-                <div
-                  key={s.value}
-                  className={`animate-fade-in stagger-${
-                    i + 3
-                  } rounded-xl border p-4 text-center backdrop-blur-sm transition-all duration-200 hover:shadow-lg`}
-                  style={cardStyle("note", isDark)}
-                >
-                  <div className="w-8 h-1 rounded mx-auto mb-2" style={{ background: s.color }} />
-                  <p className="text-2xl font-bold" style={{ color: v("text-primary") }}>
-                    {stats?.by_status[s.value] || 0}
-                  </p>
-                  <p className="text-sm" style={{ color: v("text-muted") }}>
-                    {s.label}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <div
-              className="animate-fade-in stagger-5 rounded-xl border p-4 backdrop-blur-sm transition-all duration-200 hover:shadow-lg"
-              style={cardStyle("note", isDark)}
-            >
-              <h3 className="mb-3 font-semibold" style={{ color: v("text-primary") }}>
-                Воронка продаж
-              </h3>
-              <div className="relative space-y-3">
-                {DEAL_STATUSES.map((s) => {
-                  const count = stats?.by_status[s.value] || 0;
-                  const total = stats?.total_deals || 1;
-                  const pct = Math.round((count / total) * 100);
-                  return (
-                    <div key={s.value}>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span style={{ color: v("text-muted") }}>{s.label}</span>
-                        <span style={{ color: v("text-primary") }}>
-                          {count} ({pct}%)
-                        </span>
-                      </div>
-                      <div
-                        className="w-full h-6 rounded-lg overflow-hidden relative"
-                        style={{ background: v("bg-tertiary") }}
-                      >
-                        <div
-                          className="h-full rounded-lg transition-all duration-700 ease-out"
-                          style={{
-                            width: `${pct}%`,
-                            background: `linear-gradient(90deg, ${s.color}88, ${s.color})`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showContactForm && (
-          <div className="fixed inset-0 z-[90] grid place-items-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
-            <div
-              className="w-full max-w-lg rounded-2xl border p-4 max-h-[90vh] overflow-y-auto"
-              style={{ background: v("bg-secondary"), borderColor: v("border-primary") }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold" style={{ color: v("text-primary") }}>
-                  {editingContact ? "Редактировать контакт" : "Добавить контакт"}
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowContactForm(false);
-                    setEditingContact(null);
-                  }}
-                  style={{ color: v("text-muted") }}
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <input
-                    type="text"
-                    value={cName}
-                    onChange={(e) => { setCName(e.target.value); if (contactErrors.name) setContactErrors(p => { const n = {...p}; delete n.name; return n; }); }}
-                    placeholder="Имя *"
-                    className="w-full rounded-xl border px-3 py-2 text-sm"
-                    style={{
-                      ...inputStyle(isDark),
-                      borderColor: contactErrors.name ? "#ef4444" : undefined,
-                    }}
-                  />
-                  {contactErrors.name && <p className="text-xs mt-1" style={{ color: "#ef4444" }}>{contactErrors.name}</p>}
-                </div>
-                <div>
-                  <input
-                    type="email"
-                    value={cEmail}
-                    onChange={(e) => { setCEmail(e.target.value); if (contactErrors.email) setContactErrors(p => { const n = {...p}; delete n.email; return n; }); }}
-                    placeholder="Email"
-                    className="w-full rounded-xl border px-3 py-2 text-sm"
-                    style={{
-                      ...inputStyle(isDark),
-                      borderColor: contactErrors.email ? "#ef4444" : undefined,
-                    }}
-                  />
-                  {contactErrors.email && <p className="text-xs mt-1" style={{ color: "#ef4444" }}>{contactErrors.email}</p>}
-                </div>
-                <div>
-                  <input
-                    type="text"
-                    value={cPhone}
-                    onChange={(e) => { setCPhone(e.target.value); if (contactErrors.phone) setContactErrors(p => { const n = {...p}; delete n.phone; return n; }); }}
-                    placeholder="Телефон"
-                    className="w-full rounded-xl border px-3 py-2 text-sm"
-                    style={{
-                      ...inputStyle(isDark),
-                      borderColor: contactErrors.phone ? "#ef4444" : undefined,
-                    }}
-                  />
-                  {contactErrors.phone && <p className="text-xs mt-1" style={{ color: "#ef4444" }}>{contactErrors.phone}</p>}
-                </div>
-                <input
-                  type="text"
-                  value={cCompany}
-                  onChange={(e) => setCCompany(e.target.value)}
-                  placeholder="Компания"
-                  className="w-full rounded-xl border px-3 py-2 text-sm"
-                  style={inputStyle(isDark)}
-                />
-                <input
-                  type="text"
-                  value={cPosition}
-                  onChange={(e) => setCPosition(e.target.value)}
-                  placeholder="Должность"
-                  className="w-full rounded-xl border px-3 py-2 text-sm"
-                  style={inputStyle(isDark)}
-                />
-                <textarea
-                  value={cNotes}
-                  onChange={(e) => setCNotes(e.target.value)}
-                  placeholder="Заметки"
-                  rows={2}
-                  className="w-full rounded-xl border px-3 py-2 text-sm"
-                  style={inputStyle(isDark)}
-                />
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={cIsLead} onChange={(e) => setCIsLead(e.target.checked)} />
-                  <span className="text-sm" style={{ color: v("text-muted") }}>
-                    Потенциальный клиент
-                  </span>
-                </label>
-              </div>
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowContactForm(false);
-                    setEditingContact(null);
-                  }}
-                  className="rounded-lg px-4 py-2 text-sm transition-colors"
-                  style={buttonStyle("secondary", isDark)}
-                >
-                  Отмена
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (validateContactForm()) {
-                      editingContact ? updateContactMut.mutate() : createContactMut.mutate();
-                    }
-                  }}
-                  disabled={!cName.trim() || createContactMut.isPending || updateContactMut.isPending}
-                  className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-                  style={buttonStyle("primary", isDark)}
-                >
-                  {editingContact ? "Сохранить" : "Создать"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showDealForm && (
-          <div className="fixed inset-0 z-[90] grid place-items-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
-            <div
-              className="w-full max-w-lg rounded-2xl border p-4 max-h-[90vh] overflow-y-auto"
-              style={{ background: v("bg-secondary"), borderColor: v("border-primary") }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold" style={{ color: v("text-primary") }}>
-                  {editingDeal ? "Редактировать сделку" : "Добавить сделку"}
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowDealForm(false);
-                    setEditingDeal(null);
-                  }}
-                  style={{ color: v("text-muted") }}
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <input
-                    type="text"
-                    value={dTitle}
-                    onChange={(e) => { setDTitle(e.target.value); if (dealErrors.title) setDealErrors(p => { const n = {...p}; delete n.title; return n; }); }}
-                    placeholder="Название сделки *"
-                    className="w-full rounded-xl border px-3 py-2 text-sm"
-                    style={{
-                      ...inputStyle(isDark),
-                      borderColor: dealErrors.title ? "#ef4444" : undefined,
-                    }}
-                  />
-                  {dealErrors.title && <p className="text-xs mt-1" style={{ color: "#ef4444" }}>{dealErrors.title}</p>}
-                </div>
-                <textarea
-                  value={dDescription}
-                  onChange={(e) => setDDescription(e.target.value)}
-                  placeholder="Описание"
-                  rows={2}
-                  className="w-full rounded-xl border px-3 py-2 text-sm"
-                  style={inputStyle(isDark)}
-                />
-                <select
-                  value={dContactId}
-                  onChange={(e) => setDContactId(e.target.value)}
-                  className="w-full rounded-xl border px-3 py-2 text-sm"
-                  style={inputStyle(isDark)}
-                >
-                  <option value="">Без контакта</option>
-                  {contacts.map((c: Contact) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={dStatus}
-                  onChange={(e) => setDStatus(e.target.value)}
-                  className="w-full rounded-xl border px-3 py-2 text-sm"
-                  style={inputStyle(isDark)}
-                >
-                  {DEAL_STATUSES.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <input
-                      type="number"
-                      value={dValue}
-                      onChange={(e) => { setDValue(e.target.value); if (dealErrors.value) setDealErrors(p => { const n = {...p}; delete n.value; return n; }); }}
-                      placeholder="Сумма"
-                      min="0"
-                      className="w-full rounded-xl border px-3 py-2 text-sm"
-                      style={{
-                        ...inputStyle(isDark),
-                        borderColor: dealErrors.value ? "#ef4444" : undefined,
-                      }}
-                    />
-                    {dealErrors.value && <p className="text-xs mt-1" style={{ color: "#ef4444" }}>{dealErrors.value}</p>}
-                  </div>
-                  <select
-                    value={dCurrency}
-                    onChange={(e) => setDCurrency(e.target.value)}
-                    className="rounded-xl border px-3 py-2 text-sm"
-                    style={inputStyle(isDark)}
-                  >
-                    <option value="RUB">₽ — Рубль</option>
-                    <option value="USD">$ — Доллар США</option>
-                    <option value="EUR">€ — Евро</option>
-                  </select>
-                </div>
-                <select
-                  value={dPriority}
-                  onChange={(e) => setDPriority(e.target.value)}
-                  className="w-full rounded-xl border px-3 py-2 text-sm"
-                  style={inputStyle(isDark)}
-                >
-                  {PRIORITIES.map((p) => (
-                    <option key={p.value} value={p.value}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-                <div>
-                  <input
-                    type="date"
-                    value={dDueDate}
-                    onChange={(e) => { setDDueDate(e.target.value); if (dealErrors.dueDate) setDealErrors(p => { const n = {...p}; delete n.dueDate; return n; }); }}
-                    className="w-full rounded-xl border px-3 py-2 text-sm"
-                    style={{
-                      ...inputStyle(isDark),
-                      borderColor: dealErrors.dueDate ? "#ef4444" : undefined,
-                    }}
-                  />
-                  {dealErrors.dueDate && <p className="text-xs mt-1" style={{ color: "#ef4444" }}>{dealErrors.dueDate}</p>}
-                </div>
-              </div>
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowDealForm(false);
-                    setEditingDeal(null);
-                  }}
-                  className="rounded-lg px-4 py-2 text-sm transition-colors"
-                  style={buttonStyle("secondary", isDark)}
-                >
-                  Отмена
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (validateDealForm()) {
-                      editingDeal ? updateDealMut.mutate() : createDealMut.mutate();
-                    }
-                  }}
-                  disabled={!dTitle.trim() || createDealMut.isPending || updateDealMut.isPending}
-                  className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-                  style={buttonStyle("primary", isDark)}
-                >
-                  {editingDeal ? "Сохранить" : "Создать"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {tab === "pipeline" && <PipelineView stats={stats} isDark={isDark} />}
       </div>
+
+      {showContactForm && (
+        <ContactFormModal
+          isDark={isDark}
+          editingContact={editingContact}
+          cName={cName} cEmail={cEmail} cPhone={cPhone} cCompany={cCompany}
+          cPosition={cPosition} cNotes={cNotes} cIsLead={cIsLead}
+          contactErrors={contactErrors}
+          isPending={createContactMut.isPending || updateContactMut.isPending}
+          onNameChange={setCName} onEmailChange={setCEmail} onPhoneChange={setCPhone}
+          onCompanyChange={setCCompany} onPositionChange={setCPosition}
+          onNotesChange={setCNotes} onIsLeadChange={setCIsLead}
+          onClearError={(f) => setContactErrors((p) => { const n = { ...p }; delete n[f]; return n; })}
+          onSave={() => { if (validateContactForm()) { editingContact ? updateContactMut.mutate() : createContactMut.mutate(); } }}
+          onClose={() => { setShowContactForm(false); setEditingContact(null); }}
+        />
+      )}
+
+      {showDealForm && (
+        <DealFormModal
+          isDark={isDark}
+          editingDeal={editingDeal}
+          dTitle={dTitle} dDescription={dDescription} dContactId={dContactId}
+          dStatus={dStatus} dValue={dValue} dCurrency={dCurrency}
+          dPriority={dPriority} dDueDate={dDueDate}
+          dealErrors={dealErrors}
+          contacts={contacts}
+          isPending={createDealMut.isPending || updateDealMut.isPending}
+          onTitleChange={setDTitle} onDescriptionChange={setDDescription}
+          onContactIdChange={setDContactId} onStatusChange={setDStatus}
+          onValueChange={setDValue} onCurrencyChange={setDCurrency}
+          onPriorityChange={setDPriority} onDueDateChange={setDDueDate}
+          onClearError={(f) => setDealErrors((p) => { const n = { ...p }; delete n[f]; return n; })}
+          onSave={() => { if (validateDealForm()) { editingDeal ? updateDealMut.mutate() : createDealMut.mutate(); } }}
+          onClose={() => { setShowDealForm(false); setEditingDeal(null); }}
+        />
+      )}
     </>
   );
 }

@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Plus,
   Check,
@@ -28,6 +28,7 @@ import { useTheme } from "../features/theme/ThemeContext";
 import { useTaxEventsQuery } from "../hooks/useCachedData";
 import { queryKeys } from "../lib/queryClient";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { useModalRegistration } from "../hooks/useModalOpen";
 
 const EVENT_TYPES = [
   { value: "tax", label: "Налог" },
@@ -104,6 +105,7 @@ export function TaxCalendarPage() {
   const queryClient = useQueryClient();
   const { data: events = [], isLoading } = useTaxEventsQuery();
   const [openForm, setOpenForm] = useState(false);
+  useModalRegistration(openForm);
   const [editingEvent, setEditingEvent] = useState<TaxEvent | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [searchQuery, setSearchQuery] = useState("");
@@ -212,8 +214,8 @@ export function TaxCalendarPage() {
       setEditingEvent(null);
       setForm(emptyForm);
       await queryClient.invalidateQueries({ queryKey: queryKeys.taxEvents });
-    } catch {
-      toast.error(editingEvent ? "Ошибка при обновлении" : "Ошибка при создании");
+    } catch (err: any) {
+      toast.error(err?.userMessage || (editingEvent ? "Ошибка при обновлении" : "Ошибка при создании"));
     }
   }
 
@@ -221,8 +223,8 @@ export function TaxCalendarPage() {
     try {
       await updateTaxEventApi(event.id, { is_completed: !event.is_completed });
       await queryClient.invalidateQueries({ queryKey: queryKeys.taxEvents });
-    } catch {
-      toast.error("Ошибка при обновлении");
+    } catch (err: any) {
+      toast.error(err?.userMessage || "Ошибка при обновлении");
     }
   }
 
@@ -232,8 +234,8 @@ export function TaxCalendarPage() {
       await deleteTaxEventApi(deleteTarget.id);
       await queryClient.invalidateQueries({ queryKey: queryKeys.taxEvents });
       toast.success("Событие удалено");
-    } catch {
-      toast.error("Ошибка при удалении");
+    } catch (err: any) {
+      toast.error(err?.userMessage || "Ошибка при удалении");
     } finally {
       setDeleteTarget(null);
     }

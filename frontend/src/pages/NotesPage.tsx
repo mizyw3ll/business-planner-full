@@ -30,6 +30,7 @@ import { MarkdownPreview } from "../components/MarkdownPreview";
 import { buttonStyle, inputStyle, tw, v } from "../shared/theme";
 import { useTheme } from "../features/theme/ThemeContext";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { useModalRegistration } from "../hooks/useModalOpen";
 
 const TAB_COLORS = [
   "rgba(239,68,68,0.9)",
@@ -107,6 +108,7 @@ export function NotesPage() {
   const loading = notesLoading || projectsLoading || tagsLoading;
   // Note editor
   const [editorOpen, setEditorOpen] = useState(false);
+  useModalRegistration(editorOpen);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
@@ -189,8 +191,8 @@ export function NotesPage() {
       }
       setEditorOpen(false);
       await refreshNotes();
-    } catch {
-      toast.error("Ошибка сохранения заметки");
+    } catch (err: any) {
+      toast.error(err?.userMessage || "Ошибка сохранения заметки");
     }
   }
 
@@ -206,8 +208,8 @@ export function NotesPage() {
       setShowProjectInput(false);
       toast.success("Проект создан");
       await refreshProjects();
-    } catch {
-      toast.error("Ошибка создания проекта");
+    } catch (err: any) {
+      toast.error(err?.userMessage || "Ошибка создания проекта");
     }
   }
 
@@ -228,8 +230,8 @@ export function NotesPage() {
         if (selectedProject === deleteTarget.id) setSelectedProject(null);
         await Promise.all([refreshProjects(), refreshNotes()]);
       }
-    } catch {
-      toast.error(deleteTarget.type === "note" ? "Ошибка удаления заметки" : "Ошибка удаления проекта");
+    } catch (err: any) {
+      toast.error(err?.userMessage || (deleteTarget.type === "note" ? "Ошибка удаления заметки" : "Ошибка удаления проекта"));
     } finally {
       setDeleteTarget(null);
     }

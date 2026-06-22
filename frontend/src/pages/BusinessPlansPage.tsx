@@ -77,8 +77,8 @@ export function BusinessPlansPage() {
       toast.success(ru.toasts.planCreated);
       setOpenForm(false);
       await queryClient.invalidateQueries({ queryKey: queryKeys.businessPlans });
-    } catch {
-      toast.error(ru.toasts.planSaveError);
+    } catch (err: any) {
+      toast.error(err?.userMessage || ru.toasts.planSaveError);
     }
   }
 
@@ -87,8 +87,8 @@ export function BusinessPlansPage() {
       setTemplatesLoading(true);
       const data = await getTemplatesApi(category || undefined);
       setTemplates(data);
-    } catch {
-      toast.error(ru.toasts.templatesLoadError);
+    } catch (err: any) {
+      toast.error(err?.userMessage || ru.toasts.templatesLoadError);
     } finally {
       setTemplatesLoading(false);
     }
@@ -101,8 +101,8 @@ export function BusinessPlansPage() {
       toast.success(ru.toasts.planFromTemplate);
       setOpenTemplates(false);
       await queryClient.invalidateQueries({ queryKey: queryKeys.businessPlans });
-    } catch {
-      toast.error(ru.toasts.planFromTemplateError);
+    } catch (err: any) {
+      toast.error(err?.userMessage || ru.toasts.planFromTemplateError);
     } finally {
       setTemplatesLoading(false);
     }
@@ -116,8 +116,8 @@ export function BusinessPlansPage() {
       setOpenImport(false);
       await queryClient.invalidateQueries({ queryKey: queryKeys.businessPlans });
       navigate(`/business-plans/${importedPlan.id}`);
-    } catch {
-      toast.error(ru.toasts.planImportError);
+    } catch (err: any) {
+      toast.error(err?.userMessage || ru.toasts.planImportError);
     } finally {
       setImportLoading(false);
     }

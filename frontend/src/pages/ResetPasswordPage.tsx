@@ -57,7 +57,7 @@ export function ResetPasswordPage() {
     return (
       <div
         className="grid min-h-screen place-items-center px-4"
-        style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}
+        style={{ background: "var(--bg-page)", color: "var(--text-primary)" }}
       >
         <div
           className="w-full max-w-md rounded-2xl border p-8 text-center"
@@ -81,7 +81,7 @@ export function ResetPasswordPage() {
     return (
       <div
         className="grid min-h-screen place-items-center px-4"
-        style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}
+        style={{ background: "var(--bg-page)", color: "var(--text-primary)" }}
       >
         <div
           className="w-full max-w-md rounded-2xl border p-8 text-center"
@@ -104,7 +104,7 @@ export function ResetPasswordPage() {
   return (
     <div
       className="grid min-h-screen place-items-center px-4"
-      style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}
+      style={{ background: "var(--bg-page)", color: "var(--text-primary)" }}
     >
       <form
         onSubmit={onSubmit}

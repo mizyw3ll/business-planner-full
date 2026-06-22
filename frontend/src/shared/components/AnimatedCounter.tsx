@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 
 type AnimatedCounterProps = {
@@ -10,7 +10,7 @@ type AnimatedCounterProps = {
   className?: string;
 };
 
-export function AnimatedCounter({
+export const AnimatedCounter = memo(function AnimatedCounter({
   value,
   suffix,
   prefix,
@@ -48,4 +48,4 @@ export function AnimatedCounter({
       {suffix}
     </span>
   );
-}
+});

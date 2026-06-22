@@ -6,7 +6,7 @@ export function TermsOfUsePage() {
   return (
     <main
       className="min-h-screen"
-      style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}
+      style={{ background: "var(--bg-page)", color: "var(--text-primary)" }}
     >
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8 animate-fade-in">
         <Link

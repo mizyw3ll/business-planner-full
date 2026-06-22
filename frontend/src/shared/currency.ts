@@ -60,21 +60,3 @@ export function getCurrencySymbol(code: string): string {
   const upper = code.toUpperCase();
   return CURRENCY_SYMBOLS[upper] ?? code;
 }
-
-export function formatCurrency(amount: number, code: string): string {
-  const symbol = getCurrencySymbol(code);
-  const formatted = amount.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
-  return `${formatted} ${symbol}`;
-}
-
-export function formatCurrencyCompact(amount: number, code: string): string {
-  const symbol = getCurrencySymbol(code);
-  const formatted = amount.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
-  return `${formatted} ${symbol}`;
-}
-
-export function currencyOptionLabel(code: string, _name?: string): string {
-  const symbol = getCurrencySymbol(code);
-  const ruName = getCurrencyRussianName(code);
-  return `${symbol} — ${ruName}`;
-}

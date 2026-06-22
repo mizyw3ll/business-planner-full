@@ -1,13 +1,53 @@
-﻿import { Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ScrollText, PiggyBank, FileText, BarChart3, Plus, ArrowRight, TrendingUp, Calendar } from "lucide-react";
 import { v, tw } from "../shared/theme";
 import { useDashboardQuery } from "../hooks/useCachedData";
 import { AnimatedCounter } from "../shared/components/AnimatedCounter";
 import { GlassCard } from "../shared/components/GlassCard";
+import { OptimizedList } from "../shared/components/OptimizedList";
+import { usePerformanceMonitoring } from "../shared/hooks/performance";
+import { useMemo } from "react";
+
+const ITEM_HEIGHT = 80; // Height for each item in virtual list
 
 export function DashboardPage() {
-  const { data: dashboard, isLoading } = useDashboardQuery();
-
+  usePerformanceMonitoring();
+  
+  const { data: dashboard, isLoading, error } = useDashboardQuery();
+  
+  // Memoize stats to prevent unnecessary re-renders
+  const stats = useMemo(() => [
+    { 
+      label: "Бизнес-планы", 
+      value: dashboard?.plan_count ?? 0, 
+      icon: ScrollText, 
+      accent: "indigo", 
+      iconColor: "#818cf8" 
+    },
+    { 
+      label: "Финансовые графики", 
+      value: dashboard?.chart_count ?? 0, 
+      icon: PiggyBank, 
+      accent: "emerald", 
+      iconColor: "#34d399" 
+    },
+    { 
+      label: "Заметки", 
+      value: dashboard?.note_count ?? 0, 
+      icon: FileText, 
+      accent: "amber", 
+      iconColor: "#fbbf24" 
+    },
+    { 
+      label: "Всего блоков", 
+      value: dashboard?.block_count ?? 0, 
+      icon: BarChart3, 
+      accent: "rose", 
+      iconColor: "#fb7185" 
+    },
+  ], [dashboard]);
+  
+  
   if (isLoading) {
     return (
       <div className="space-y-8 p-6">
@@ -25,18 +65,17 @@ export function DashboardPage() {
       </div>
     );
   }
-
-  const planCount = dashboard?.plan_count ?? 0;
-  const chartCount = dashboard?.chart_count ?? 0;
-  const noteCount = dashboard?.note_count ?? 0;
-  const blockCount = dashboard?.block_count ?? 0;
-
-  const stats = [
-    { label: "Бизнес-планы", value: planCount, icon: ScrollText, accent: "indigo", iconColor: "#818cf8" },
-    { label: "Финансовые графики", value: chartCount, icon: PiggyBank, accent: "emerald", iconColor: "#34d399" },
-    { label: "Заметки", value: noteCount, icon: FileText, accent: "amber", iconColor: "#fbbf24" },
-    { label: "Всего блоков", value: blockCount, icon: BarChart3, accent: "rose", iconColor: "#fb7185" },
-  ];
+  
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <GlassCard className="p-8 text-center">
+          <h2 className="text-xl font-bold mb-4">Ошибка загрузки данных</h2>
+          <p className="text-muted">{error.message}</p>
+        </GlassCard>
+      </div>
+    );
+  }
 
   return (
     <div className={tw.pageContainer}>
@@ -52,7 +91,10 @@ export function DashboardPage() {
       {/* Stat Cards */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, i) => (
-          <div key={stat.label} className={`animate-fade-in stagger-${i + 1}`}>
+          <div 
+            key={stat.label} 
+            className={`animate-fade-in stagger-${i + 1}`}
+          >
             <GlassCard accent={stat.accent as "indigo" | "emerald" | "amber" | "rose"}>
               <div className="flex items-start justify-between">
                 <div>
@@ -76,7 +118,7 @@ export function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="animate-fade-in stagger-5">
+      <div className="animate-fade-in">
         <div className="flex flex-wrap gap-4">
           <Link
             to="/business-plans"
@@ -101,10 +143,10 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Recent Items */}
+      {/* Recent Items - Using virtual scrolling for large lists */}
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Recent Plans */}
-        <div className="animate-fade-in stagger-6">
+        <div className="animate-fade-in">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="flex items-center gap-2.5 text-xl font-bold" style={{ color: v("text-primary") }}>
               <div className="rounded-lg p-1.5" style={{ background: "rgba(129, 140, 248, 0.15)" }}>
@@ -120,45 +162,47 @@ export function DashboardPage() {
               Все <ArrowRight size={14} />
             </Link>
           </div>
+          
           {dashboard?.recent_plans && dashboard.recent_plans.length > 0 ? (
-            <div className="space-y-3">
-              {dashboard.recent_plans.map(
-                (plan: { id: number; title: string; block_count: number; created_at: string }, i: number) => (
-                  <Link
-                    key={plan.id}
-                    to={`/business-plans/${plan.id}`}
-                    className={`group block rounded-2xl border p-5 backdrop-blur-md transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-2xl hover:border-indigo-500/50 animate-fade-in stagger-${
-                      i + 1
-                    }`}
-                    style={{ background: v("bg-card"), borderColor: v("border-primary"), boxShadow: v("shadow-md") }}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-lg font-bold truncate" style={{ color: v("text-primary") }}>
-                          {plan.title}
-                        </p>
-                        <div className="mt-2 flex items-center gap-4">
-                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ background: "rgba(129, 140, 248, 0.15)", color: "#818cf8" }}>
-                            {plan.block_count} блоков
-                          </span>
-                          <span className="text-xs font-medium" style={{ color: v("text-muted") }}>
-                            <Calendar size={12} className="mr-1.5 inline opacity-70" />
-                            {new Date(plan.created_at).toLocaleDateString("ru-RU")}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="rounded-full p-1.5 transition-colors group-hover:bg-indigo-500/20">
-                        <ArrowRight
-                          size={18}
-                          className="shrink-0 opacity-40 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-1"
-                          style={{ color: v("accent-primary") }}
-                        />
+            <OptimizedList
+              items={dashboard.recent_plans}
+              itemHeight={ITEM_HEIGHT}
+              overscanCount={5}
+              renderItem={(plan: { id: number; title: string; block_count: number; created_at: string }, index: number) => (
+                <Link
+                  key={plan.id}
+                  to={`/business-plans/${plan.id}`}
+                  className={`group block rounded-2xl border p-5 backdrop-blur-md transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-2xl hover:border-indigo-500/50 animate-fade-in stagger-${
+                    index + 1
+                  }`}
+                  style={{ background: v("bg-card"), borderColor: v("border-primary"), boxShadow: v("shadow-md") }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-lg font-bold truncate" style={{ color: v("text-primary") }}>
+                        {plan.title}
+                      </p>
+                      <div className="mt-2 flex items-center gap-4">
+                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ background: "rgba(129, 140, 248, 0.15)", color: "#818cf8" }}>
+                          {plan.block_count} блоков
+                        </span>
+                        <span className="text-xs font-medium" style={{ color: v("text-muted") }}>
+                          <Calendar size={12} className="mr-1.5 inline opacity-70" />
+                          {new Date(plan.created_at).toLocaleDateString("ru-RU")}
+                        </span>
                       </div>
                     </div>
-                  </Link>
-                ),
+                    <div className="rounded-full p-1.5 transition-colors group-hover:bg-indigo-500/20">
+                      <ArrowRight
+                        size={18}
+                        className="shrink-0 opacity-40 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-1"
+                        style={{ color: v("accent-primary") }}
+                      />
+                    </div>
+                  </div>
+                </Link>
               )}
-            </div>
+            />
           ) : (
             <GlassCard hover={false} className="h-48 justify-center border-dashed">
               <ScrollText size={32} className="mx-auto mb-3 opacity-20" style={{ color: v("text-muted") }} />
@@ -170,7 +214,7 @@ export function DashboardPage() {
         </div>
 
         {/* Recent Charts */}
-        <div className="animate-fade-in stagger-7">
+        <div className="animate-fade-in">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="flex items-center gap-2.5 text-xl font-bold" style={{ color: v("text-primary") }}>
               <div className="rounded-lg p-1.5" style={{ background: "rgba(52, 211, 153, 0.15)" }}>
@@ -186,45 +230,47 @@ export function DashboardPage() {
               Все <ArrowRight size={14} />
             </Link>
           </div>
+          
           {dashboard?.recent_charts && dashboard.recent_charts.length > 0 ? (
-            <div className="space-y-3">
-              {dashboard.recent_charts.map(
-                (chart: { id: number; title: string; point_count: number; created_at: string }, i: number) => (
-                  <Link
-                    key={chart.id}
-                    to={`/financial-plans/${chart.id}`}
-                    className={`group block rounded-2xl border p-5 backdrop-blur-md transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-2xl hover:border-emerald-500/50 animate-fade-in stagger-${
-                      i + 1
-                    }`}
-                    style={{ background: v("bg-card"), borderColor: v("border-primary"), boxShadow: v("shadow-md") }}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-lg font-bold truncate" style={{ color: v("text-primary") }}>
-                          {chart.title}
-                        </p>
-                        <div className="mt-2 flex items-center gap-4">
-                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ background: "rgba(52, 211, 153, 0.15)", color: "#34d399" }}>
-                            {chart.point_count} точек
-                          </span>
-                          <span className="text-xs font-medium" style={{ color: v("text-muted") }}>
-                            <Calendar size={12} className="mr-1.5 inline opacity-70" />
-                            {new Date(chart.created_at).toLocaleDateString("ru-RU")}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="rounded-full p-1.5 transition-colors group-hover:bg-emerald-500/20">
-                        <ArrowRight
-                          size={18}
-                          className="shrink-0 opacity-40 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-1"
-                          style={{ color: "#34d399" }}
-                        />
+            <OptimizedList
+              items={dashboard.recent_charts}
+              itemHeight={ITEM_HEIGHT}
+              overscanCount={5}
+              renderItem={(chart: { id: number; title: string; point_count: number; created_at: string }, index: number) => (
+                <Link
+                  key={chart.id}
+                  to={`/financial-plans/${chart.id}`}
+                  className={`group block rounded-2xl border p-5 backdrop-blur-md transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-2xl hover:border-emerald-500/50 animate-fade-in stagger-${
+                    index + 1
+                  }`}
+                  style={{ background: v("bg-card"), borderColor: v("border-primary"), boxShadow: v("shadow-md") }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-lg font-bold truncate" style={{ color: v("text-primary") }}>
+                        {chart.title}
+                      </p>
+                      <div className="mt-2 flex items-center gap-4">
+                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ background: "rgba(52, 211, 153, 0.15)", color: "#34d399" }}>
+                          {chart.point_count} точек
+                        </span>
+                        <span className="text-xs font-medium" style={{ color: v("text-muted") }}>
+                          <Calendar size={12} className="mr-1.5 inline opacity-70" />
+                          {new Date(chart.created_at).toLocaleDateString("ru-RU")}
+                        </span>
                       </div>
                     </div>
-                  </Link>
-                ),
+                    <div className="rounded-full p-1.5 transition-colors group-hover:bg-emerald-500/20">
+                      <ArrowRight
+                        size={18}
+                        className="shrink-0 opacity-40 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-1"
+                        style={{ color: "#34d399" }}
+                      />
+                    </div>
+                  </div>
+                </Link>
               )}
-            </div>
+            />
           ) : (
             <GlassCard hover={false} className="h-48 justify-center border-dashed">
               <TrendingUp size={32} className="mx-auto mb-3 opacity-20" style={{ color: v("text-muted") }} />
@@ -236,7 +282,7 @@ export function DashboardPage() {
         </div>
 
         {/* Recent Notes */}
-        <div className="animate-fade-in stagger-8">
+        <div className="animate-fade-in">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="flex items-center gap-2.5 text-xl font-bold" style={{ color: v("text-primary") }}>
               <div className="rounded-lg p-1.5" style={{ background: "rgba(251, 191, 36, 0.15)" }}>
@@ -252,14 +298,18 @@ export function DashboardPage() {
               Все <ArrowRight size={14} />
             </Link>
           </div>
+          
           {dashboard?.recent_notes && dashboard.recent_notes.length > 0 ? (
-            <div className="space-y-3">
-              {dashboard.recent_notes.map((note: { id: number; title: string; created_at: string }, i: number) => (
+            <OptimizedList
+              items={dashboard.recent_notes}
+              itemHeight={ITEM_HEIGHT}
+              overscanCount={5}
+              renderItem={(note: { id: number; title: string; created_at: string }, index: number) => (
                 <Link
                   key={note.id}
                   to="/notes"
                   className={`group block rounded-2xl border p-5 backdrop-blur-md transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-2xl hover:border-amber-500/50 animate-fade-in stagger-${
-                    i + 1
+                    index + 1
                   }`}
                   style={{ background: v("bg-card"), borderColor: v("border-primary"), boxShadow: v("shadow-md") }}
                 >
@@ -284,8 +334,8 @@ export function DashboardPage() {
                     </div>
                   </div>
                 </Link>
-              ))}
-            </div>
+              )}
+            />
           ) : (
             <GlassCard hover={false} className="h-48 justify-center border-dashed">
               <FileText size={32} className="mx-auto mb-3 opacity-20" style={{ color: v("text-muted") }} />

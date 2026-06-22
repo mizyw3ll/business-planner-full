@@ -26,8 +26,8 @@ export function NotificationsPage() {
     try {
       const data = await getNotificationsApi();
       setNotifs(data);
-    } catch {
-      toast.error("Ошибка загрузки уведомлений");
+    } catch (err: any) {
+      toast.error(err?.userMessage || "Ошибка загрузки уведомлений");
     } finally {
       setLoading(false);
     }
@@ -41,8 +41,8 @@ export function NotificationsPage() {
     try {
       await markNotificationReadApi(id);
       setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
-    } catch {
-      toast.error("Ошибка");
+    } catch (err: any) {
+      toast.error(err?.userMessage || "Ошибка");
     }
   }
 
@@ -51,8 +51,8 @@ export function NotificationsPage() {
       await markAllNotificationsReadApi();
       setNotifs((prev) => prev.map((n) => ({ ...n, is_read: true })));
       toast.success("Все прочитаны");
-    } catch {
-      toast.error("Ошибка");
+    } catch (err: any) {
+      toast.error(err?.userMessage || "Ошибка");
     }
   }
 
@@ -61,8 +61,8 @@ export function NotificationsPage() {
     try {
       await deleteNotificationApi(deleteTarget.id);
       setNotifs((prev) => prev.filter((n) => n.id !== deleteTarget.id));
-    } catch {
-      toast.error("Ошибка удаления");
+    } catch (err: any) {
+      toast.error(err?.userMessage || "Ошибка удаления");
     } finally {
       setDeleteTarget(null);
     }
@@ -74,8 +74,8 @@ export function NotificationsPage() {
       setNotifs([]);
       setDeleteAllConfirm(false);
       toast.success("Все уведомления удалены");
-    } catch {
-      toast.error("Ошибка удаления");
+    } catch (err: any) {
+      toast.error(err?.userMessage || "Ошибка удаления");
     }
   }
 

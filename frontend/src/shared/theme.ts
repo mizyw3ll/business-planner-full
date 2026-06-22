@@ -174,20 +174,6 @@ export const theme = {
 // Helper to get CSS variable
 export const v = (name: string) => `var(--${name})`;
 
-// Common style objects for inline styles
-export const styles = {
-  pageTitle: { color: v("text-primary"), fontFamily: "'Plus Jakarta Sans', sans-serif" },
-  cardText: { color: v("text-secondary") },
-  cardMuted: { color: v("text-muted") },
-  input: {
-    background: v("bg-input"),
-    border: `1px solid ${v("border-primary")}`,
-    color: v("text-primary"),
-    borderRadius: "14px",
-    transition: "all 0.2s ease-out",
-  },
-} as const;
-
 // Tailwind classes for common patterns
 export const tw = {
   pageContainer: "space-y-8",
@@ -221,23 +207,6 @@ export function cardStyle(type: "business" | "financial" | "note", isDark: boole
     boxShadow: isDark
       ? "var(--card-shadow, 0 4px 16px rgba(0,0,0,0.3)), inset 0 1px 0 rgba(255,255,255,0.06)"
       : "var(--card-shadow, 0 4px 12px rgba(99,102,241,0.06)), inset 0 1px 0 rgba(255,255,255,0.8)",
-  };
-}
-
-// Get card hover style object
-export function cardHoverStyle(type: "business" | "financial" | "note", isDark: boolean) {
-  const t = theme.cards[type][isDark ? "dark" : "light"];
-  return {
-    background: isDark
-      ? `linear-gradient(145deg, ${t.hoverBg}, rgba(18,16,36,0.5))`
-      : `linear-gradient(145deg, ${t.hoverBg}, rgba(255,255,255,0.55))`,
-    border: `1px solid ${isDark ? "rgba(99, 102, 241, 0.45)" : "rgba(99, 102, 241, 0.3)"}`,
-    backdropFilter: "var(--glass-blur, blur(32px)) var(--glass-saturate, saturate(2))",
-    WebkitBackdropFilter: "var(--glass-blur, blur(32px)) var(--glass-saturate, saturate(2))",
-    boxShadow: isDark
-      ? "0 12px 32px rgba(0,0,0,0.4), 0 0 24px rgba(99,102,241,0.15), inset 0 1px 0 rgba(255,255,255,0.08)"
-      : "0 12px 30px rgba(99,102,241,0.1), 0 0 24px rgba(99,102,241,0.08), inset 0 1px 0 rgba(255,255,255,0.9)",
-    transform: "translateY(-4px)",
   };
 }
 
@@ -275,33 +244,5 @@ export function buttonStyle(variant: "primary" | "secondary" | "danger", isDark:
     background: t.bg,
     border: `1px solid ${t.border}`,
     color: t.text,
-  };
-}
-
-// Primary action button styles
-export function primaryButtonStyle(disabled?: boolean) {
-  return {
-    background: theme.gradients.primary,
-    color: "#ffffff",
-    opacity: disabled ? 0.5 : 1,
-    boxShadow: disabled ? "none" : "0 4px 14px rgba(99, 102, 241, 0.35)",
-  };
-}
-
-// Primary button hover handlers
-export function primaryButtonHandlers(canInteract: boolean) {
-  return {
-    onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
-      if (canInteract) {
-        e.currentTarget.style.transform = "translateY(-1px)";
-        e.currentTarget.style.boxShadow = "0 6px 20px rgba(99, 102, 241, 0.4)";
-      }
-    },
-    onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => {
-      if (canInteract) {
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "0 4px 14px rgba(99, 102, 241, 0.35)";
-      }
-    },
   };
 }
