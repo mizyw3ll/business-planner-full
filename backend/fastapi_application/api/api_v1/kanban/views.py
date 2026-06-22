@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Annotated
 
 from core.models import Board, BoardCard, BoardColumn, User, db_helper
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from api.api_v1.auth.fastapi_users import current_active_user
 
+from .dependencies import _get_board_for_card, _get_board_for_card_target_column, _get_board_for_column
 from .schemas import (
     BoardCardRead,
     BoardColumnRead,
@@ -170,13 +172,8 @@ async def update_column(
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(db_helper.session_getter),
 ):
+    board = await _get_board_for_column(column_id, user, session)
     column = await session.get(BoardColumn, column_id)
-    if not column:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Колонка не найдена")
-
-    board = await session.get(Board, column.board_id)
-    if not board or board.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Доступ запрещён")
 
     update_data = column_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -193,14 +190,8 @@ async def delete_column(
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(db_helper.session_getter),
 ):
+    await _get_board_for_column(column_id, user, session)
     column = await session.get(BoardColumn, column_id)
-    if not column:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Колонка не найдена")
-
-    board = await session.get(Board, column.board_id)
-    if not board or board.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Доступ запрещён")
-
     await session.delete(column)
     await session.commit()
 
@@ -216,9 +207,17 @@ async def reorder_columns(
     if not board or board.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Доска не найдена")
 
+    # Batch-load all columns in a single query instead of N+1
+    stmt = select(BoardColumn).where(
+        BoardColumn.id.in_(body.column_ids),
+        BoardColumn.board_id == board_id,
+    )
+    result = await session.execute(stmt)
+    columns_by_id = {col.id: col for col in result.scalars().all()}
+
     for idx, col_id in enumerate(body.column_ids):
-        col = await session.get(BoardColumn, col_id)
-        if col and col.board_id == board_id:
+        col = columns_by_id.get(col_id)
+        if col:
             col.column_order = idx
 
     await session.commit()
@@ -235,13 +234,7 @@ async def create_card(
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(db_helper.session_getter),
 ):
-    column = await session.get(BoardColumn, column_id)
-    if not column:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Колонка не найдена")
-
-    board = await session.get(Board, column.board_id)
-    if not board or board.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Доступ запрещён")
+    await _get_board_for_column(column_id, user, session)
 
     result = await session.execute(
         select(BoardCard.card_order)
@@ -272,16 +265,7 @@ async def update_card(
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(db_helper.session_getter),
 ):
-    card = await session.get(BoardCard, card_id)
-    if not card:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Карточка не найдена")
-
-    column = await session.get(BoardColumn, card.column_id)
-    if not column:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Колонка не найдена")
-    board = await session.get(Board, column.board_id)
-    if not board or board.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Доступ запрещён")
+    card, _column, _board = await _get_board_for_card(card_id, user, session)
 
     update_data = card_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -298,17 +282,7 @@ async def delete_card(
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(db_helper.session_getter),
 ):
-    card = await session.get(BoardCard, card_id)
-    if not card:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Карточка не найдена")
-
-    column = await session.get(BoardColumn, card.column_id)
-    if not column:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Колонка не найдена")
-    board = await session.get(Board, column.board_id)
-    if not board or board.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Доступ запрещён")
-
+    card, _column, _board = await _get_board_for_card(card_id, user, session)
     await session.delete(card)
     await session.commit()
 
@@ -320,21 +294,9 @@ async def move_card(
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(db_helper.session_getter),
 ):
-    card = await session.get(BoardCard, card_id)
-    if not card:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Карточка не найдена")
-
-    column = await session.get(BoardColumn, card.column_id)
-    if not column:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Колонка не найдена")
-    board = await session.get(Board, column.board_id)
-    if not board or board.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Доступ запрещён")
-
-    if body.column_id != card.column_id:
-        target_column = await session.get(BoardColumn, body.column_id)
-        if not target_column or target_column.board_id != board.id:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Колонка не принадлежит этой доске")
+    card, _column, _board = await _get_board_for_card_target_column(
+        card_id, body.column_id, user, session
+    )
 
     card.column_id = body.column_id
     card.card_order = body.card_order

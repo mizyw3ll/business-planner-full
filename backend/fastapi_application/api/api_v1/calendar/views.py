@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, date, datetime, timedelta
 from email.utils import parsedate_to_datetime
 
@@ -244,7 +245,7 @@ async def import_ical(
         )
 
     try:
-        cal = Calendar.from_ical(content)
+        cal = await asyncio.to_thread(Calendar.from_ical, content)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -7,7 +7,7 @@ Delete
 
 from datetime import UTC, datetime
 
-from core.models import BusinessPlan, PlanBlock
+from core.models import BusinessPlan
 from sqlalchemy import select
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,24 +28,6 @@ async def get_business_plans_light(
         .where(BusinessPlan.user_id == user_id)
         .order_by(BusinessPlan.id)
         .options(selectinload(BusinessPlan.tags))
-    )
-    result: Result = await session.execute(stmt)
-    return list(result.scalars().all())
-
-
-async def get_business_plans(
-    session: AsyncSession,
-    user_id: int,
-) -> list[BusinessPlan]:
-    stmt = (
-        select(BusinessPlan)
-        .where(BusinessPlan.user_id == user_id)
-        .order_by(BusinessPlan.id)
-        .options(
-            selectinload(BusinessPlan.blocks).selectinload(PlanBlock.tags),
-            selectinload(BusinessPlan.blocks).selectinload(PlanBlock.linked_financial_charts),
-            selectinload(BusinessPlan.tags),
-        )
     )
     result: Result = await session.execute(stmt)
     return list(result.scalars().all())

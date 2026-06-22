@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from services.email import EmailService
 from services.notification_broadcaster import broadcaster
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.api_v1.auth.fastapi_users import current_active_user
@@ -36,14 +36,14 @@ async def unread_count(
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(db_helper.session_getter),
 ):
-    stmt = select(Notification).where(
+    stmt = select(func.count()).select_from(Notification).where(
         and_(
             Notification.user_id == user.id,
             ~Notification.is_read,
         )
     )
-    result = await session.execute(stmt)
-    return {"count": len(list(result.scalars().all()))}
+    count = (await session.execute(stmt)).scalar() or 0
+    return {"count": count}
 
 
 @router.get("/stream")
@@ -157,15 +157,14 @@ async def mark_all_read(
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(db_helper.session_getter),
 ):
-    stmt = select(Notification).where(
-        and_(
-            Notification.user_id == user.id,
-            ~Notification.is_read,
-        )
+    from sqlalchemy import update
+
+    stmt = (
+        update(Notification)
+        .where(Notification.user_id == user.id, ~Notification.is_read)
+        .values(is_read=True)
     )
-    result = await session.execute(stmt)
-    for notif in result.scalars().all():
-        notif.is_read = True
+    await session.execute(stmt)
     await session.commit()
     return {"ok": True}
 
@@ -188,8 +187,8 @@ async def delete_all_notifications(
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(db_helper.session_getter),
 ):
-    stmt = select(Notification).where(Notification.user_id == user.id)
-    result = await session.execute(stmt)
-    for notif in result.scalars().all():
-        await session.delete(notif)
+    from sqlalchemy import delete
+
+    stmt = delete(Notification).where(Notification.user_id == user.id)
+    await session.execute(stmt)
     await session.commit()

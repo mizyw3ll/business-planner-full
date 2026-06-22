@@ -79,7 +79,7 @@ async def business_plan_by_id(
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(db_helper.session_getter),
 ) -> BusinessPlan:
-    """Полный план для мутаций блоков: блоки + теги + графики, без снимков."""
+    """Полный план для мутаций блоков: блоки + теги + графики + комментарии, без снимков."""
     stmt = (
         select(BusinessPlan)
         .where(BusinessPlan.id == plan_id)
@@ -87,6 +87,7 @@ async def business_plan_by_id(
             noload(BusinessPlan.snapshots),
             selectinload(BusinessPlan.blocks).selectinload(PlanBlock.tags),
             selectinload(BusinessPlan.blocks).selectinload(PlanBlock.linked_financial_charts),
+            selectinload(BusinessPlan.blocks).selectinload(PlanBlock.comments),
             selectinload(BusinessPlan.tags),
         )
     )

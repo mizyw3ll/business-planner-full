@@ -185,23 +185,30 @@ async def get_pipeline_stats(
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(db_helper.session_getter),
 ):
-    total = (await session.execute(select(func.count()).select_from(Deal).where(Deal.user_id == user.id))).scalar() or 0
+    uid = user.id
 
-    total_value = (
-        await session.execute(select(func.coalesce(func.sum(Deal.value), 0.0)).where(Deal.user_id == user.id))
-    ).scalar() or 0.0
+    # Query 1: total deals + total value
+    totals_stmt = select(
+        func.count().label("total"),
+        func.coalesce(func.sum(Deal.value), 0.0).label("total_value"),
+    ).where(Deal.user_id == uid)
+    totals_row = (await session.execute(totals_stmt)).one()
+    total = totals_row.total or 0
+    total_value = totals_row.total_value or 0.0
 
-    # By status
-    status_result = await session.execute(
-        select(Deal.status, func.count()).where(Deal.user_id == user.id).group_by(Deal.status)
-    )
-    by_status = {row[0]: row[1] for row in status_result.all()}
+    # Query 2: group by status + priority in one query using conditional aggregation
+    grouped_stmt = select(
+        Deal.status,
+        Deal.priority,
+        func.count().label("cnt"),
+    ).where(Deal.user_id == uid).group_by(Deal.status, Deal.priority)
+    grouped_result = await session.execute(grouped_stmt)
 
-    # By priority
-    priority_result = await session.execute(
-        select(Deal.priority, func.count()).where(Deal.user_id == user.id).group_by(Deal.priority)
-    )
-    by_priority = {row[0]: row[1] for row in priority_result.all()}
+    by_status: dict[str, int] = {}
+    by_priority: dict[str, int] = {}
+    for row in grouped_result.all():
+        by_status[row.status] = by_status.get(row.status, 0) + row.cnt
+        by_priority[row.priority] = by_priority.get(row.priority, 0) + row.cnt
 
     return PipelineStats(
         total_deals=total,

@@ -24,16 +24,6 @@ async def get_chart_points(
     return list(result.scalars().all())
 
 
-async def get_chart_point(
-    session: AsyncSession,
-    point_id: int,
-) -> ChartPoint | None:
-    return await session.get(
-        ChartPoint,
-        point_id,
-    )
-
-
 async def create_chart_point(
     session: AsyncSession,
     point_in: ChartPointCreate,

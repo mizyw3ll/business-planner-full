@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import io
 from typing import Annotated, Literal
@@ -167,74 +168,78 @@ async def export_chart(
             headers={"Content-Disposition": f"attachment; filename=chart_{chart.id}.csv"},
         )
 
-    # XLSX
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Chart Data"
+    # XLSX — build in a thread to avoid blocking the event loop
+    def _build_xlsx() -> io.BytesIO:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Chart Data"
 
-    header_fill = PatternFill(start_color="1f2937", end_color="1f2937", fill_type="solid")
-    header_font = Font(bold=True, color="ffffff", size=11)
-    summary_fill = PatternFill(start_color="f3f4f6", end_color="f3f4f6", fill_type="solid")
-    thin_border = Border(
-        left=Side(style="thin", color="d1d5db"),
-        right=Side(style="thin", color="d1d5db"),
-        top=Side(style="thin", color="d1d5db"),
-        bottom=Side(style="thin", color="d1d5db"),
-    )
+        header_fill = PatternFill(start_color="1f2937", end_color="1f2937", fill_type="solid")
+        header_font = Font(bold=True, color="ffffff", size=11)
+        summary_fill = PatternFill(start_color="f3f4f6", end_color="f3f4f6", fill_type="solid")
+        thin_border = Border(
+            left=Side(style="thin", color="d1d5db"),
+            right=Side(style="thin", color="d1d5db"),
+            top=Side(style="thin", color="d1d5db"),
+            bottom=Side(style="thin", color="d1d5db"),
+        )
 
-    ws.merge_cells("A1:D1")
-    ws["A1"] = chart.title
-    ws["A1"].font = Font(bold=True, size=14)
-    ws["A1"].alignment = Alignment(horizontal="left")
+        ws.merge_cells("A1:D1")
+        ws["A1"] = chart.title
+        ws["A1"].font = Font(bold=True, size=14)
+        ws["A1"].alignment = Alignment(horizontal="left")
 
-    ws.merge_cells("A2:D2")
-    ws["A2"] = f"Currency ID: {chart.currency_id}"
-    ws["A2"].font = Font(size=10, color="6b7280")
+        ws.merge_cells("A2:D2")
+        ws["A2"] = f"Currency ID: {chart.currency_id}"
+        ws["A2"].font = Font(size=10, color="6b7280")
 
-    ws.append([])
-    headers = ["Дата", "Тип", "Сумма", "Описание"]
-    ws.append(headers)
-    for col_idx, header in enumerate(headers, 1):
-        cell = ws.cell(row=ws.max_row, column=col_idx)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-        cell.border = thin_border
+        ws.append([])
+        headers = ["Дата", "Тип", "Сумма", "Описание"]
+        ws.append(headers)
+        for col_idx, header in enumerate(headers, 1):
+            cell = ws.cell(row=ws.max_row, column=col_idx)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = thin_border
 
-    for p in points:
-        ws.append([p.date.isoformat(), p.type, float(p.amount), p.description or ""])  # type: ignore[attr-defined]
+        for p in points:
+            ws.append([p.date.isoformat(), p.type, float(p.amount), p.description or ""])  # type: ignore[attr-defined]
+            for col_idx in range(1, 5):
+                ws.cell(row=ws.max_row, column=col_idx).border = thin_border
+
+        ws.append([])
+        summary_row = ws.max_row + 1
+        ws.cell(row=summary_row, column=1, value="Итого").font = Font(bold=True, size=12)
+        ws.cell(row=summary_row, column=1).fill = summary_fill
+        ws.cell(row=summary_row, column=1).border = thin_border
+        for col_idx in range(2, 5):
+            ws.cell(row=summary_row, column=col_idx).fill = summary_fill
+            ws.cell(row=summary_row, column=col_idx).border = thin_border
+
+        for label, value in [
+            ("Доходы", total_income),
+            ("Расходы", total_expense),
+            ("Чистая прибыль", total_income - total_expense),
+        ]:
+            ws.append([label, value])
+            for col_idx in range(1, 5):
+                ws.cell(row=ws.max_row, column=col_idx).border = thin_border
+
         for col_idx in range(1, 5):
-            ws.cell(row=ws.max_row, column=col_idx).border = thin_border
+            max_len = 0
+            col_letter = ws.cell(row=1, column=col_idx).column_letter
+            for row in ws.iter_rows(min_col=col_idx, max_col=col_idx, values_only=True):
+                val = str(row[0] or "")
+                max_len = max(max_len, len(val))
+            ws.column_dimensions[col_letter].width = min(max_len + 4, 60)
 
-    ws.append([])
-    summary_row = ws.max_row + 1
-    ws.cell(row=summary_row, column=1, value="Итого").font = Font(bold=True, size=12)
-    ws.cell(row=summary_row, column=1).fill = summary_fill
-    ws.cell(row=summary_row, column=1).border = thin_border
-    for col_idx in range(2, 5):
-        ws.cell(row=summary_row, column=col_idx).fill = summary_fill
-        ws.cell(row=summary_row, column=col_idx).border = thin_border
+        xlsx_output = io.BytesIO()
+        wb.save(xlsx_output)
+        xlsx_output.seek(0)
+        return xlsx_output
 
-    for label, value in [
-        ("Доходы", total_income),
-        ("Расходы", total_expense),
-        ("Чистая прибыль", total_income - total_expense),
-    ]:
-        ws.append([label, value])
-        for col_idx in range(1, 5):
-            ws.cell(row=ws.max_row, column=col_idx).border = thin_border
-
-    for col_idx in range(1, 5):
-        max_len = 0
-        col_letter = ws.cell(row=1, column=col_idx).column_letter
-        for row in ws.iter_rows(min_col=col_idx, max_col=col_idx, values_only=True):
-            val = str(row[0] or "")
-            max_len = max(max_len, len(val))
-        ws.column_dimensions[col_letter].width = min(max_len + 4, 60)
-
-    xlsx_output = io.BytesIO()
-    wb.save(xlsx_output)
-    xlsx_output.seek(0)
+    xlsx_output = await asyncio.to_thread(_build_xlsx)
     return StreamingResponse(
         xlsx_output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

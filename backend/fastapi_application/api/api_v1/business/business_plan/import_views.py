@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import io
 
@@ -63,9 +64,13 @@ async def import_plan(
                     continue
 
     elif filename.endswith((".xlsx", ".xls")):
-        wb = load_workbook(io.BytesIO(content))
-        ws = wb.active
-        all_rows = list(ws.iter_rows(values_only=True))
+        def _parse_xlsx(content: bytes) -> list[dict]:
+            wb = load_workbook(io.BytesIO(content))
+            ws = wb.active
+            all_rows = list(ws.iter_rows(values_only=True))
+            return all_rows  # type: ignore[return-value]
+
+        all_rows = await asyncio.to_thread(_parse_xlsx, content)
 
         header_row_idx = None
         header_labels = ("Порядок", "Название блока", "Тип блока", "Содержание")
@@ -148,13 +153,16 @@ async def import_plan(
     elif filename.endswith(".pdf"):
         from pypdf import PdfReader
 
-        reader = PdfReader(io.BytesIO(content))  # type: ignore[assignment]
-        text_parts = []
-        for page in reader.pages:  # type: ignore[attr-defined]
-            page_text = page.extract_text()
-            if page_text:
-                text_parts.append(page_text)
-        full_text = "\n".join(text_parts)
+        def _parse_pdf(content: bytes) -> str:
+            reader = PdfReader(io.BytesIO(content))  # type: ignore[assignment]
+            text_parts = []
+            for page in reader.pages:  # type: ignore[attr-defined]
+                page_text = page.extract_text()
+                if page_text:
+                    text_parts.append(page_text)
+            return "\n".join(text_parts)
+
+        full_text = await asyncio.to_thread(_parse_pdf, content)
 
         lines = [line.strip() for line in full_text.split("\n") if line.strip()]
         if lines:

@@ -101,13 +101,21 @@ async def restore_snapshot(
         await session.delete(block)
     await session.flush()
 
+    # Batch-load all financial charts in a single query (fix N+1)
+    all_chart_ids: set[int] = set()
     for block_data in snapshot.blocks_snapshot:
         chart_ids = block_data.get("linked_financial_chart_ids") or []
-        linked_charts: list[FinancialChart] = []
-        if chart_ids:
-            stmt = select(FinancialChart).where(FinancialChart.id.in_(chart_ids))
-            result = await session.execute(stmt)
-            linked_charts = list(result.scalars().all())
+        all_chart_ids.update(chart_ids)
+
+    charts_by_id: dict[int, FinancialChart] = {}
+    if all_chart_ids:
+        stmt = select(FinancialChart).where(FinancialChart.id.in_(all_chart_ids))
+        result = await session.execute(stmt)
+        charts_by_id = {chart.id: chart for chart in result.scalars().all()}
+
+    for block_data in snapshot.blocks_snapshot:
+        chart_ids = block_data.get("linked_financial_chart_ids") or []
+        linked_charts = [charts_by_id[cid] for cid in chart_ids if cid in charts_by_id]
         block = PlanBlock(
             business_plan_id=plan.id,
             title=block_data.get("title", "Без названия"),

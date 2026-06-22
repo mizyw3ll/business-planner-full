@@ -33,16 +33,6 @@ async def get_plan_blocks(
     return list(result.scalars().all())
 
 
-async def get_plan_block(
-    session: AsyncSession,
-    plan_block_id: int,
-) -> PlanBlock | None:
-    return await session.get(
-        PlanBlock,
-        plan_block_id,
-    )
-
-
 async def create_plan_block(
     session: AsyncSession,
     plan_block_in: PlanBlockCreate,

@@ -1,4 +1,4 @@
-from core.models import BusinessPlan, FinancialChart, Note, PlanBlock, User, db_helper
+from core.models import BusinessPlan, ChartPoint, FinancialChart, Note, PlanBlock, User, db_helper
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,29 +20,28 @@ async def get_dashboard(
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(db_helper.session_getter),
 ):
-    # Counts
-    plan_count = (
-        await session.execute(select(func.count()).select_from(BusinessPlan).where(BusinessPlan.user_id == user.id))
-    ).scalar() or 0
+    uid = user.id
 
-    chart_count = (
-        await session.execute(select(func.count()).select_from(FinancialChart).where(FinancialChart.user_id == user.id))
-    ).scalar() or 0
+    # ── 1. All counts in a single query via subqueries ──
+    plan_count_sq = select(func.count()).select_from(BusinessPlan).where(BusinessPlan.user_id == uid).scalar_subquery()
+    chart_count_sq = select(func.count()).select_from(FinancialChart).where(FinancialChart.user_id == uid).scalar_subquery()
+    note_count_sq = select(func.count()).select_from(Note).where(Note.user_id == uid).scalar_subquery()
+    block_count_sq = (
+        select(func.count())
+        .select_from(PlanBlock)
+        .join(BusinessPlan, PlanBlock.business_plan_id == BusinessPlan.id)
+        .where(BusinessPlan.user_id == uid)
+        .scalar_subquery()
+    )
 
-    note_count = (
-        await session.execute(select(func.count()).select_from(Note).where(Note.user_id == user.id))
-    ).scalar() or 0
+    counts_stmt = select(plan_count_sq.label("plans"), chart_count_sq.label("charts"), note_count_sq.label("notes"), block_count_sq.label("blocks"))
+    counts_row = (await session.execute(counts_stmt)).one()
+    plan_count = counts_row.plans or 0
+    chart_count = counts_row.charts or 0
+    note_count = counts_row.notes or 0
+    block_count = counts_row.blocks or 0
 
-    block_count = (
-        await session.execute(
-            select(func.count())
-            .select_from(PlanBlock)
-            .join(BusinessPlan, PlanBlock.business_plan_id == BusinessPlan.id)
-            .where(BusinessPlan.user_id == user.id)
-        )
-    ).scalar() or 0
-
-    # Recent plans with block counts
+    # ── 2. Recent plans with block counts ──
     recent_plans_stmt = (
         select(
             BusinessPlan.id,
@@ -52,7 +51,7 @@ async def get_dashboard(
             func.count(PlanBlock.id).label("block_count"),
         )
         .outerjoin(PlanBlock, BusinessPlan.id == PlanBlock.business_plan_id)
-        .where(BusinessPlan.user_id == user.id)
+        .where(BusinessPlan.user_id == uid)
         .group_by(BusinessPlan.id, BusinessPlan.title, BusinessPlan.description, BusinessPlan.created_at)
         .order_by(BusinessPlan.created_at.desc())
         .limit(5)
@@ -69,15 +68,16 @@ async def get_dashboard(
         for row in recent_plans_result.all()
     ]
 
-    # Recent charts with point counts
+    # ── 3. Recent charts with point counts (fixed: count ChartPoint, not FinancialChart) ──
     recent_charts_stmt = (
         select(
             FinancialChart.id,
             FinancialChart.title,
             FinancialChart.created_at,
-            func.count(FinancialChart.id).label("point_count"),
+            func.count(ChartPoint.id).label("point_count"),
         )
-        .where(FinancialChart.user_id == user.id)
+        .outerjoin(ChartPoint, FinancialChart.id == ChartPoint.chart_id)
+        .where(FinancialChart.user_id == uid)
         .group_by(FinancialChart.id, FinancialChart.title, FinancialChart.created_at)
         .order_by(FinancialChart.created_at.desc())
         .limit(5)
@@ -93,10 +93,10 @@ async def get_dashboard(
         for row in recent_charts_result.all()
     ]
 
-    # Recent notes
+    # ── 4. Recent notes ──
     recent_notes_stmt = (
         select(Note.id, Note.title, Note.created_at)
-        .where(Note.user_id == user.id)
+        .where(Note.user_id == uid)
         .order_by(Note.created_at.desc())
         .limit(5)
     )

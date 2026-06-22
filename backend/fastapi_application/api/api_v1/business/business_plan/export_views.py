@@ -1,6 +1,8 @@
+import asyncio
 import csv
 import html
 import io
+from functools import partial
 from typing import Annotated, Literal
 
 from core.models import BusinessPlan
@@ -22,7 +24,7 @@ async def export_plan(
     format: Literal["html", "xlsx", "csv", "pdf"] = Query("html"),
 ):
     if format == "pdf":
-        pdf_bytes = generate_plan_pdf(plan)
+        pdf_bytes = await asyncio.to_thread(generate_plan_pdf, plan)
         return StreamingResponse(
             io.BytesIO(pdf_bytes),
             media_type="application/pdf",
@@ -92,66 +94,70 @@ async def export_plan(
             headers={"Content-Disposition": f"attachment; filename=plan_{plan.id}.csv"},
         )
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Business Plan"
+    def _build_xlsx() -> io.BytesIO:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Business Plan"
 
-    header_fill = PatternFill(start_color="1f2937", end_color="1f2937", fill_type="solid")
-    header_font = Font(bold=True, color="ffffff", size=11)
-    thin_border = Border(
-        left=Side(style="thin", color="d1d5db"),
-        right=Side(style="thin", color="d1d5db"),
-        top=Side(style="thin", color="d1d5db"),
-        bottom=Side(style="thin", color="d1d5db"),
-    )
+        header_fill = PatternFill(start_color="1f2937", end_color="1f2937", fill_type="solid")
+        header_font = Font(bold=True, color="ffffff", size=11)
+        thin_border = Border(
+            left=Side(style="thin", color="d1d5db"),
+            right=Side(style="thin", color="d1d5db"),
+            top=Side(style="thin", color="d1d5db"),
+            bottom=Side(style="thin", color="d1d5db"),
+        )
 
-    ws.merge_cells("A1:D1")
-    ws["A1"] = plan.title
-    ws["A1"].font = Font(bold=True, size=14)
-    ws["A1"].alignment = Alignment(horizontal="left")
+        ws.merge_cells("A1:D1")
+        ws["A1"] = plan.title
+        ws["A1"].font = Font(bold=True, size=14)
+        ws["A1"].alignment = Alignment(horizontal="left")
 
-    if plan.description:
-        ws.merge_cells("A2:D2")
-        ws["A2"] = plan.description
-        ws["A2"].font = Font(size=10, color="6b7280")
+        if plan.description:
+            ws.merge_cells("A2:D2")
+            ws["A2"] = plan.description
+            ws["A2"].font = Font(size=10, color="6b7280")
 
-    ws.merge_cells("A3:D3")
-    ws["A3"] = f"Создан: {plan.created_at.strftime('%Y-%m-%d')}"  # type: ignore[attr-defined]
-    ws["A3"].font = Font(size=10, color="9ca3af")
+        ws.merge_cells("A3:D3")
+        ws["A3"] = f"Создан: {plan.created_at.strftime('%Y-%m-%d')}"  # type: ignore[attr-defined]
+        ws["A3"].font = Font(size=10, color="9ca3af")
 
-    ws.append([])
-    headers = ["Порядок", "Название блока", "Тип блока", "Содержание"]
-    ws.append(headers)
-    for col_idx, header in enumerate(headers, 1):
-        cell = ws.cell(row=ws.max_row, column=col_idx)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-        cell.border = thin_border
-
-    for block in sorted(plan.blocks, key=lambda b: b.block_order):
-        rc = block.rich_content if isinstance(block.rich_content, dict) else None
-        content = serialize_block_plain(block.block_type, block.content or "", rc)
-        row_data = [block.block_order, block.title, block.block_type, content]
-        ws.append(row_data)
-        for col_idx in range(1, 5):
+        ws.append([])
+        headers = ["Порядок", "Название блока", "Тип блока", "Содержание"]
+        ws.append(headers)
+        for col_idx, header in enumerate(headers, 1):
             cell = ws.cell(row=ws.max_row, column=col_idx)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="center", vertical="center")
             cell.border = thin_border
-            cell.alignment = Alignment(vertical="top", wrap_text=True)
 
-    for col_idx in range(1, 5):
-        max_len = 0
-        from openpyxl.utils import get_column_letter
+        for block in sorted(plan.blocks, key=lambda b: b.block_order):
+            rc = block.rich_content if isinstance(block.rich_content, dict) else None
+            content = serialize_block_plain(block.block_type, block.content or "", rc)
+            row_data = [block.block_order, block.title, block.block_type, content]
+            ws.append(row_data)
+            for col_idx in range(1, 5):
+                cell = ws.cell(row=ws.max_row, column=col_idx)
+                cell.border = thin_border
+                cell.alignment = Alignment(vertical="top", wrap_text=True)
 
-        col_letter = get_column_letter(col_idx)
-        for row in ws.iter_rows(min_col=col_idx, max_col=col_idx, values_only=True):
-            val = str(row[0] or "")
-            max_len = max(max_len, len(val))
-        ws.column_dimensions[col_letter].width = min(max_len + 4, 60)
+        for col_idx in range(1, 5):
+            max_len = 0
+            from openpyxl.utils import get_column_letter
 
-    xlsx_output = io.BytesIO()
-    wb.save(xlsx_output)
-    xlsx_output.seek(0)
+            col_letter = get_column_letter(col_idx)
+            for row in ws.iter_rows(min_col=col_idx, max_col=col_idx, values_only=True):
+                val = str(row[0] or "")
+                max_len = max(max_len, len(val))
+            ws.column_dimensions[col_letter].width = min(max_len + 4, 60)
+
+        xlsx_output = io.BytesIO()
+        wb.save(xlsx_output)
+        xlsx_output.seek(0)
+        return xlsx_output
+
+    xlsx_output = await asyncio.to_thread(_build_xlsx)
     return StreamingResponse(
         xlsx_output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
