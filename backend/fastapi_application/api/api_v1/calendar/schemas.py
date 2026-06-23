@@ -9,7 +9,7 @@ class CalendarEventBase(BaseModel):
     title: str = Field(..., max_length=200)
     description: str | None = None
     event_date: datetime
-    notify_before: int | None = None
+    notify_before: list[int] | None = None
     event_type: str = Field(default="manual", max_length=50)
     related_plan_id: int | None = None
     related_block_id: int | None = None
@@ -31,7 +31,7 @@ class CalendarEventUpdate(BaseModel):
     title: str | None = Field(None, max_length=200)
     description: str | None = None
     event_date: datetime | None = None
-    notify_before: int | None = None
+    notify_before: list[int] | None = None
     event_type: str | None = None
     related_plan_id: int | None = None
     related_block_id: int | None = None
@@ -51,6 +51,7 @@ class CalendarEventRead(CalendarEventBase):
     id: int
     user_id: int
     notified_at: datetime | None = None
+    notified_values: list[int] | None = None
     created_at: datetime
 
 

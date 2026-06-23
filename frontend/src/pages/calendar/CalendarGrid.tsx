@@ -53,6 +53,7 @@ interface CalendarGridProps {
   isDark: boolean;
   onPrevMonth: () => void;
   onNextMonth: () => void;
+  onDayClick?: (date: Date) => void;
   onEditEvent: (event: CalendarEvent) => void;
   onDeleteEvent: (event: CalendarEvent) => void;
 }
@@ -64,6 +65,7 @@ export const CalendarGrid = memo(function CalendarGrid({
   isDark,
   onPrevMonth,
   onNextMonth,
+  onDayClick,
   onEditEvent,
   onDeleteEvent,
 }: CalendarGridProps) {
@@ -116,9 +118,10 @@ export const CalendarGrid = memo(function CalendarGrid({
           return (
             <div
               key={i}
+              onClick={() => { if (d && onDayClick) onDayClick(d); }}
               className={`min-h-[95px] rounded-xl border p-1.5 transition-all duration-200 hover:scale-[1.02] hover:z-10 ${
                 isToday ? "border-indigo-500/60 ring-2 ring-indigo-500/20" : "border-transparent"
-              } ${past ? "opacity-35" : ""}`}
+              } ${past ? "opacity-35" : ""} ${d ? "cursor-pointer" : ""}`}
               style={{
                 background: d
                   ? isToday
@@ -154,7 +157,7 @@ export const CalendarGrid = memo(function CalendarGrid({
                         )}
                         <button
                           onClick={(e) => { e.stopPropagation(); onDeleteEvent(ev); }}
-                          className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-all duration-200 hover:bg-red-500/10 shrink-0"
+                          className="p-0.5 rounded transition-all duration-200 hover:bg-red-500/10 shrink-0"
                           style={{ color: "#ef4444" }}
                         >
                           <Trash2 size={10} />

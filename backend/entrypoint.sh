@@ -5,4 +5,4 @@ echo "Running migrations..."
 alembic -c /app/fastapi_application/alembic.ini upgrade head
 
 echo "Starting server..."
-exec poetry run uvicorn fastapi_application.main:main_app --host 0.0.0.0 --port 8000
+exec uvicorn fastapi_application.main:main_app --host 0.0.0.0 --port 8000

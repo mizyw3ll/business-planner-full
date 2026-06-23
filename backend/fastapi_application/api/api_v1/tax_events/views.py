@@ -77,7 +77,6 @@ async def get_pending_notifications(
             and_(
                 TaxEvent.user_id == user.id,
                 TaxEvent.notify_before.isnot(None),
-                TaxEvent.notified_at.is_(None),
                 ~TaxEvent.is_completed,
             )
         )
@@ -92,8 +91,12 @@ async def get_pending_notifications(
         ed = e.event_date
         if ed.tzinfo is None:  # type: ignore[attr-defined]
             ed = ed.replace(tzinfo=UTC)  # type: ignore[attr-defined]
-        if now >= ed - timedelta(minutes=e.notify_before):  # type: ignore[operator]
-            pending.append(e)
+        for minutes in e.notify_before:
+            if e.notified_values and minutes in e.notified_values:
+                continue
+            if now >= ed - timedelta(minutes=minutes):  # type: ignore[operator]
+                pending.append(e)
+                break
     return pending
 
 
@@ -107,6 +110,16 @@ async def mark_notified(
     if not event or event.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Событие не найдено")
     event.notified_at = datetime.now(UTC)  # type: ignore[assignment]
+    now = datetime.now(UTC)
+    if event.notify_before:
+        ed = event.event_date
+        if ed.tzinfo is None:
+            ed = ed.replace(tzinfo=UTC)
+        new_values = [m for m in event.notify_before if now >= ed - timedelta(minutes=m)]
+        if new_values:
+            existing = set(event.notified_values or [])
+            existing.update(new_values)
+            event.notified_values = sorted(existing)
     await session.commit()
     await session.refresh(event)
     return event

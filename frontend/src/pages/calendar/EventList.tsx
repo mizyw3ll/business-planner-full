@@ -68,8 +68,8 @@ export const EventList = memo(function EventList({
         <span className="inline-block h-2 w-2 rounded-full bg-indigo-500" />
         Все события месяца
       </h3>
-      <div className="flex items-center gap-2 mb-3">
-        <div className="relative flex-1 max-w-xs">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-3">
+        <div className="relative flex-1 max-w-xs w-full sm:w-auto">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: v("text-tertiary") }} />
           <input
             type="text"
@@ -112,7 +112,7 @@ export const EventList = memo(function EventList({
                 <p className="text-xs" style={{ color: v("text-muted") }}>{formatDateTime(ev.event_date)}</p>
                 {ev.description && <p className="text-xs truncate mt-0.5" style={{ color: v("text-tertiary") }}>{ev.description}</p>}
               </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+              <div className="flex gap-1 shrink-0">
                 <button onClick={() => onEditEvent(ev)} className="p-1.5 rounded-lg transition-colors hover:bg-blue-500/10" style={{ color: v("text-muted") }}>
                   <Pencil size={14} />
                 </button>

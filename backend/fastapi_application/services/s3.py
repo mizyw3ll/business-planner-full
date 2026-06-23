@@ -87,21 +87,24 @@ class LocalStorage:
     def __init__(self, root: str) -> None:
         from pathlib import Path
 
-        self.root = Path(root)
+        self.root = Path(root).resolve()
         self.root.mkdir(parents=True, exist_ok=True)
 
-    def _path(self, key: str):
-        return self.root / key
+    def _safe_path(self, key: str) -> Path:
+        resolved = (self.root / key).resolve()
+        if not str(resolved).startswith(str(self.root)):
+            raise ValueError(f"Path traversal denied: {key}")
+        return resolved
 
     async def put_object(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> None:
-        path = self._path(key)
+        path = self._safe_path(key)
         path.parent.mkdir(parents=True, exist_ok=True)
         await asyncio.to_thread(path.write_bytes, data)
 
     async def get_object(self, key: str) -> tuple[bytes, str]:
         import mimetypes
 
-        path = self._path(key)
+        path = self._safe_path(key)
         if not path.is_file():
             raise FileNotFoundError(f"File not found: {key}")
         data = await asyncio.to_thread(path.read_bytes)
@@ -109,12 +112,12 @@ class LocalStorage:
         return data, content_type
 
     async def delete_object(self, key: str) -> None:
-        path = self._path(key)
+        path = self._safe_path(key)
         if path.is_file():
             await asyncio.to_thread(path.unlink)
 
     async def head_object(self, key: str) -> dict | None:
-        path = self._path(key)
+        path = self._safe_path(key)
         def _stat():
             return path.stat().st_size if path.is_file() else None
         size = await asyncio.to_thread(_stat)

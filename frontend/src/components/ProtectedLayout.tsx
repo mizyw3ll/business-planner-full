@@ -1,7 +1,7 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Menu, ArrowLeft } from "lucide-react";
+import { Menu, ArrowLeft, Search } from "lucide-react";
 import { useAuth } from "../features/auth/AuthContext";
 import { Sidebar } from "./Sidebar";
 import { SettingsModal } from "./SettingsModal";
@@ -14,6 +14,7 @@ import { SearchBar } from "./SearchBar";
 export function ProtectedLayout() {
   const { user, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { open, tab, openModal, closeModal } = useSettingsModalState();
@@ -116,11 +117,35 @@ export function ProtectedLayout() {
           )}
 
           {!anyModalOpen && (
-            <div className="fixed right-4 top-4 z-40 flex items-center gap-3 max-[639px]:left-20">
-              <div className="flex-1 sm:w-80 lg:w-[400px] sm:flex-none">
+            <div className="fixed right-4 top-4 z-40 flex items-center gap-3">
+              <div className="hidden sm:block flex-1 sm:w-80 lg:w-[400px]">
                 <SearchBar />
               </div>
+              <button
+                type="button"
+                className="sm:hidden grid h-10 w-10 place-items-center rounded-xl border transition-all hover:bg-[var(--bg-hover)] hover:scale-105 active:scale-95 shrink-0"
+                style={{
+                  borderColor: "var(--border-primary)",
+                  background: "var(--bg-secondary)",
+                  color: "var(--text-primary)",
+                }}
+                onClick={() => setSearchOpen(!searchOpen)}
+                aria-label="Поиск"
+              >
+                <Search size={20} />
+              </button>
               <NotificationBell />
+            </div>
+          )}
+
+          {searchOpen && (
+            <div
+              className="fixed left-4 right-4 top-16 z-50 sm:hidden"
+              onClick={() => setSearchOpen(false)}
+            >
+              <div onClick={(e) => e.stopPropagation()}>
+                <SearchBar onNavigate={() => setSearchOpen(false)} />
+              </div>
             </div>
           )}
 

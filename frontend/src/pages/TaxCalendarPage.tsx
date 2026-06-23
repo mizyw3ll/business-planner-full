@@ -39,14 +39,13 @@ const EVENT_TYPES = [
 ];
 
 const NOTIFY_OPTIONS = [
-  { value: 0, label: "Не уведомлять" },
+  { value: 5, label: "За 5 минут" },
+  { value: 10, label: "За 10 минут" },
   { value: 15, label: "За 15 минут" },
   { value: 30, label: "За 30 минут" },
   { value: 60, label: "За 1 час" },
   { value: 120, label: "За 2 часа" },
   { value: 1440, label: "За 1 день" },
-  { value: 2880, label: "За 2 дня" },
-  { value: 10080, label: "За неделю" },
 ];
 
 type FormState = {
@@ -55,7 +54,7 @@ type FormState = {
   event_date: string;
   event_type: string;
   amount: string;
-  notify_before: number;
+  notify_before: number[];
 };
 
 function getLocalDatetimeStr() {
@@ -85,9 +84,9 @@ function formatEventDate(iso: string) {
   });
 }
 
-function getNotifyLabel(minutes: number | null | undefined) {
-  if (!minutes || minutes === 0) return null;
-  return NOTIFY_OPTIONS.find((o) => o.value === minutes)?.label ?? null;
+function getNotifyLabel(minutes: number[] | null | undefined) {
+  if (!minutes || minutes.length === 0) return null;
+  return minutes.map((m) => NOTIFY_OPTIONS.find((o) => o.value === m)?.label ?? `За ${m} мин`).join(", ");
 }
 
 const emptyForm: FormState = {
@@ -96,7 +95,7 @@ const emptyForm: FormState = {
   event_date: getLocalDatetimeStr(),
   event_type: "tax",
   amount: "",
-  notify_before: 0,
+  notify_before: [30],
 };
 
 export function TaxCalendarPage() {
@@ -168,18 +167,18 @@ export function TaxCalendarPage() {
     setOpenForm(true);
   }
 
-  function openEditForm(event: TaxEvent) {
-    setEditingEvent(event);
-    setForm({
-      title: event.title,
-      description: event.description || "",
-      event_date: isoToDatetimeLocal(event.event_date),
-      event_type: event.event_type,
-      amount: event.amount ? String(event.amount) : "",
-      notify_before: event.notify_before ?? 0,
-    });
-    setOpenForm(true);
-  }
+function openEditForm(event: TaxEvent) {
+  setEditingEvent(event);
+  setForm({
+    title: event.title,
+    description: event.description || "",
+    event_date: isoToDatetimeLocal(event.event_date),
+    event_type: event.event_type,
+    amount: event.amount ? String(event.amount) : "",
+    notify_before: event.notify_before ?? [30],
+  });
+  setOpenForm(true);
+}
 
   async function submit() {
     if (!form.title.trim() || !form.event_date) return;
@@ -196,7 +195,7 @@ export function TaxCalendarPage() {
           event_date: eventDate.toISOString(),
           event_type: form.event_type,
           amount: form.amount ? parseInt(form.amount) : undefined,
-          notify_before: form.notify_before || null,
+          notify_before: form.notify_before.length > 0 ? form.notify_before : null,
         });
         toast.success("Событие обновлено");
       } else {
@@ -206,7 +205,7 @@ export function TaxCalendarPage() {
           event_date: eventDate.toISOString(),
           event_type: form.event_type,
           amount: form.amount ? parseInt(form.amount) : undefined,
-          notify_before: form.notify_before || null,
+          notify_before: form.notify_before.length > 0 ? form.notify_before : null,
         });
         toast.success("Событие создано");
       }
@@ -350,15 +349,14 @@ export function TaxCalendarPage() {
         <button
           type="button"
           onClick={openNewForm}
-          className={`${tw.buttonPrimary} flex items-center gap-2`}
+          className={`${tw.buttonPrimary} flex items-center gap-1.5`}
         >
-          <Plus size={16} />
-          Добавить событие
+          <Plus size={16} /> <span className="hidden sm:inline">Добавить событие</span>
         </button>
       </div>
 
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-xs">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+        <div className="relative flex-1 max-w-xs w-full sm:w-auto">
           <Search
             size={16}
             className="absolute left-3 top-1/2 -translate-y-1/2"
@@ -546,18 +544,34 @@ export function TaxCalendarPage() {
                 className="w-full rounded-xl border px-3 py-2 text-sm"
                 style={inputStyle(isDark)}
               />
-              <select
-                value={form.notify_before}
-                onChange={(e) => setForm({ ...form, notify_before: parseInt(e.target.value) })}
-                className="w-full rounded-xl border px-3 py-2 text-sm"
-                style={inputStyle(isDark)}
-              >
-                {NOTIFY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <label className="text-xs font-medium block mb-1.5" style={{ color: v("text-muted") }}>Напоминание</label>
+                <div className="flex flex-wrap gap-2">
+                  {NOTIFY_OPTIONS.map((o) => (
+                    <label
+                      key={o.value}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs cursor-pointer transition-colors hover:bg-[var(--bg-hover)]"
+                      style={{
+                        borderColor: form.notify_before.includes(o.value) ? "var(--color-primary)" : "var(--border-secondary)",
+                        background: form.notify_before.includes(o.value) ? "rgba(99,102,241,0.08)" : "transparent",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.notify_before.includes(o.value)}
+                        onChange={() => {
+                          const arr = form.notify_before.includes(o.value)
+                            ? form.notify_before.filter((v) => v !== o.value)
+                            : [...form.notify_before, o.value].sort((a, b) => a - b);
+                          setForm({ ...form, notify_before: arr });
+                        }}
+                        className="rounded accent-indigo-500"
+                      />
+                      {o.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
               <textarea
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}

@@ -72,10 +72,12 @@ export const BlocksSection = memo(function BlocksSection({
             }}
             onClick={onToggleAI}
           >
-            {aiGeneratingPlan ? "■ Стоп" : "AI: структура"}
+            <span className="sm:hidden">{aiGeneratingPlan ? "■" : "AI"}</span>
+            <span className="hidden sm:inline">{aiGeneratingPlan ? "■ Стоп" : "AI: структура"}</span>
           </button>
           <button className={tw.buttonPrimary} onClick={onCreateBlock}>
-            Добавить блок
+            <span className="sm:hidden">+</span>
+            <span className="hidden sm:inline">Добавить блок</span>
           </button>
         </div>
       </div>

@@ -22,7 +22,7 @@ class TaxEventBase(BaseModel):
     amount: int | None = None
     is_recurring: bool = False
     recurrence_rule: str | None = None
-    notify_before: int | None = None
+    notify_before: list[int] | None = None
 
 
 class TaxEventCreate(TaxEventBase):
@@ -38,7 +38,7 @@ class TaxEventUpdate(BaseModel):
     is_recurring: bool | None = None
     recurrence_rule: str | None = None
     is_completed: bool | None = None
-    notify_before: int | None = None
+    notify_before: list[int] | None = None
 
 
 class TaxEventRead(TaxEventBase):
@@ -46,8 +46,9 @@ class TaxEventRead(TaxEventBase):
     user_id: int
     is_completed: bool
     notified_at: datetime | None = None
+    notified_values: list[int] | None = None
     created_at: datetime
     updated_at: datetime
-    notify_before: int | None = None
+    notify_before: list[int] | None = None
 
     model_config = {"from_attributes": True}

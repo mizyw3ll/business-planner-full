@@ -18,8 +18,9 @@ import { CalendarGrid } from "./calendar/CalendarGrid";
 import { EventList } from "./calendar/EventList";
 
 const NOTIFY_OPTIONS = [
-  { value: 0, label: "Нет" },
+  { value: 5, label: "За 5 минут" },
   { value: 10, label: "За 10 минут" },
+  { value: 15, label: "За 15 минут" },
   { value: 30, label: "За 30 минут" },
   { value: 60, label: "За 1 час" },
   { value: 120, label: "За 2 часа" },
@@ -67,14 +68,14 @@ export function CalendarPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newDate, setNewDate] = useState(getLocalDatetimeStr());
   const [newDesc, setNewDesc] = useState("");
-  const [newNotify, setNewNotify] = useState(0);
+  const [newNotify, setNewNotify] = useState<number[]>([30]);
 
   const [editEvent, setEditEvent] = useState<CalendarEvent | null>(null);
   useModalRegistration(!!editEvent);
   const [editTitle, setEditTitle] = useState("");
   const [editDate, setEditDate] = useState("");
   const [editDesc, setEditDesc] = useState("");
-  const [editNotify, setEditNotify] = useState(0);
+  const [editNotify, setEditNotify] = useState<number[]>([30]);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("event_date_asc");
   const [deleteTarget, setDeleteTarget] = useState<CalendarEvent | null>(null);
@@ -112,11 +113,11 @@ export function CalendarPage() {
         title: newTitle.trim(),
         description: newDesc || undefined,
         event_date: eventDate.toISOString(),
-        notify_before: newNotify || null,
+        notify_before: newNotify.length > 0 ? newNotify : null,
       });
       toast.success("Событие создано");
       setShowCreate(false);
-      setNewTitle(""); setNewDesc(""); setNewNotify(0); setNewDate(getLocalDatetimeStr());
+      setNewTitle(""); setNewDesc(""); setNewNotify([30]); setNewDate(getLocalDatetimeStr());
       await fetchEvents();
     } catch (err: any) {
       toast.error(err?.userMessage || "Ошибка создания события");
@@ -128,7 +129,7 @@ export function CalendarPage() {
     setEditTitle(event.title);
     setEditDate(isoToDatetimeLocal(event.event_date));
     setEditDesc(event.description || "");
-    setEditNotify(event.notify_before ?? 0);
+    setEditNotify(event.notify_before ?? [30]);
   }
 
   async function handleEdit() {
@@ -139,7 +140,7 @@ export function CalendarPage() {
         title: editTitle.trim(),
         description: editDesc || undefined,
         event_date: eventDate.toISOString(),
-        notify_before: editNotify || null,
+        notify_before: editNotify.length > 0 ? editNotify : null,
       });
       toast.success("Событие обновлено");
       setEditEvent(null);
@@ -182,6 +183,11 @@ export function CalendarPage() {
     }
   }
 
+  function toggleNotify(arr: number[], value: number): number[] {
+    if (arr.includes(value)) return arr.filter((v) => v !== value);
+    return [...arr, value].sort((a, b) => a - b);
+  }
+
   const EventForm = ({ mode }: { mode: "create" | "edit" }) => {
     const isCreate = mode === "create";
     const title = isCreate ? newTitle : editTitle;
@@ -208,32 +214,58 @@ export function CalendarPage() {
           <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={2} className="w-full rounded-xl border px-3 py-2 text-sm" style={inputStyle(isDark)} placeholder="Описание события..." />
         </div>
         <div>
-          <label className="text-xs font-medium block mb-1" style={{ color: v("text-muted") }}>Напоминание</label>
-          <select value={notify} onChange={(e) => setNotify(Number(e.target.value))} className="w-full rounded-xl border px-3 py-2 text-sm" style={inputStyle(isDark)}>
-            {NOTIFY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+          <label className="text-xs font-medium block mb-1.5" style={{ color: v("text-muted") }}>Напоминание</label>
+          <div className="flex flex-wrap gap-2">
+            {NOTIFY_OPTIONS.map((o) => (
+              <label
+                key={o.value}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs cursor-pointer transition-colors hover:bg-[var(--bg-hover)]"
+                style={{
+                  borderColor: notify.includes(o.value) ? "var(--color-primary)" : "var(--border-secondary)",
+                  background: notify.includes(o.value) ? "rgba(99,102,241,0.08)" : "transparent",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={notify.includes(o.value)}
+                  onChange={() => setNotify(toggleNotify(notify, o.value))}
+                  className="rounded accent-indigo-500"
+                />
+                {o.label}
+              </label>
+            ))}
+          </div>
         </div>
       </div>
     );
   };
 
+  function handleDayClick(date: Date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    const h = String(new Date().getHours()).padStart(2, "0");
+    const min = String(new Date().getMinutes()).padStart(2, "0");
+    setNewDate(`${y}-${m}-${d}T${h}:${min}`);
+    setShowCreate(true);
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold flex items-center gap-2" style={{ color: v("text-primary") }}>
-          <span className="inline-block h-6 w-6 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600" />
+      <div className="flex items-center gap-3 overflow-x-auto scrollbar-hide -mx-1 px-1">
+        <h1 className="text-2xl font-semibold shrink-0" style={{ color: v("text-primary") }}>
           Календарь
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
           <input ref={fileInputRef} type="file" accept=".ics" onChange={handleImport} className="hidden" />
-          <button onClick={() => fileInputRef.current?.click()} disabled={importing} className={`${tw.buttonSecondary} flex items-center gap-1.5`}>
-            <Upload size={16} /> {importing ? "Импорт..." : "Импорт"}
+          <button onClick={() => fileInputRef.current?.click()} disabled={importing} className={`${tw.buttonSecondary} flex items-center gap-1.5 whitespace-nowrap`}>
+            <Upload size={16} /> <span className="hidden sm:inline">{importing ? "Импорт..." : "Импорт"}</span>
           </button>
-          <a href={getCalendarExportUrl()} download className={`${tw.buttonSecondary} flex items-center gap-1.5`}>
-            <Download size={16} /> Экспорт
+          <a href={getCalendarExportUrl()} download className={`${tw.buttonSecondary} flex items-center gap-1.5 whitespace-nowrap`}>
+            <Download size={16} /> <span className="hidden sm:inline">Экспорт</span>
           </a>
-          <button onClick={() => setShowCreate(true)} className={`${tw.buttonPrimary} flex items-center gap-1.5`}>
-            <Plus size={16} /> Событие
+          <button onClick={() => setShowCreate(true)} className={`${tw.buttonPrimary} flex items-center gap-1.5 whitespace-nowrap`}>
+            <Plus size={16} /> <span className="hidden sm:inline">Событие</span>
           </button>
         </div>
       </div>
@@ -245,6 +277,7 @@ export function CalendarPage() {
         isDark={isDark}
         onPrevMonth={prevMonth}
         onNextMonth={nextMonth}
+        onDayClick={handleDayClick}
         onEditEvent={openEdit}
         onDeleteEvent={(ev) => setDeleteTarget(ev)}
       />

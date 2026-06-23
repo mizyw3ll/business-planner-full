@@ -98,7 +98,6 @@ async def get_calendar_pending_notifications(
             and_(
                 CalendarEvent.user_id == user.id,
                 CalendarEvent.notify_before.isnot(None),
-                CalendarEvent.notified_at.is_(None),
                 CalendarEvent.event_date >= now,
             )
         )
@@ -111,8 +110,12 @@ async def get_calendar_pending_notifications(
         if not e.notify_before:
             continue
         event_dt = e.event_date if e.event_date.tzinfo else e.event_date.replace(tzinfo=UTC)
-        if now >= event_dt - timedelta(minutes=e.notify_before):
-            pending.append(e)
+        for minutes in e.notify_before:
+            if e.notified_values and minutes in e.notified_values:
+                continue
+            if now >= event_dt - timedelta(minutes=minutes):
+                pending.append(e)
+                break
     return pending
 
 
@@ -126,6 +129,15 @@ async def mark_calendar_notified(
     if not event or event.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Событие не найдено")
     event.notified_at = datetime.now(UTC)  # type: ignore[assignment]
+    # Отмечаем все значения notify_before, которые уже наступили
+    now = datetime.now(UTC)
+    if event.notify_before:
+        event_dt = event.event_date if event.event_date.tzinfo else event.event_date.replace(tzinfo=UTC)
+        new_values = [m for m in event.notify_before if now >= event_dt - timedelta(minutes=m)]
+        if new_values:
+            existing = set(event.notified_values or [])
+            existing.update(new_values)
+            event.notified_values = sorted(existing)
     await session.commit()
     await session.refresh(event)
     return event
@@ -205,14 +217,15 @@ async def export_ical(
         if event.event_type and event.event_type != "manual":
             vevent.add("categories", [event.event_type])
 
-        if event.notify_before and event.notify_before > 0:
+        if event.notify_before:
             from icalendar import Alarm
 
-            alarm = Alarm()
-            alarm.add("action", "DISPLAY")
-            alarm.add("description", f"Напоминание: {event.title}")
-            alarm.add("trigger", timedelta(minutes=-event.notify_before))
-            vevent.add_component(alarm)
+            for minutes in event.notify_before:
+                alarm = Alarm()
+                alarm.add("action", "DISPLAY")
+                alarm.add("description", f"Напоминание: {event.title}")
+                alarm.add("trigger", timedelta(minutes=-minutes))
+                vevent.add_component(alarm)
 
         cal.add_component(vevent)
 
@@ -299,7 +312,9 @@ async def import_ical(
             notify_before = None
             for sub in component.walk():
                 if sub.name == "VALARM":
-                    notify_before = _parse_alarm_minutes(sub)
+                    val = _parse_alarm_minutes(sub)
+                    if val is not None:
+                        notify_before = [val]
                     break
 
             event_type = "imported"

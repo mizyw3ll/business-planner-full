@@ -400,16 +400,16 @@ export function CrmPage() {
             <button
               type="button"
               onClick={() => { resetContactForm(); setEditingContact(null); setShowContactForm(true); }}
-              className={`${tw.buttonPrimary} flex items-center gap-2`}
+              className={`${tw.buttonPrimary} flex items-center gap-1.5`}
             >
-              <Plus size={16} /> Контакт
+              <Plus size={16} /> <span className="hidden sm:inline">Контакт</span>
             </button>
             <button
               type="button"
               onClick={() => { resetDealForm(); setEditingDeal(null); setShowDealForm(true); }}
-              className={`${tw.buttonPrimary} flex items-center gap-2`}
+              className={`${tw.buttonPrimary} flex items-center gap-1.5`}
             >
-              <Plus size={16} /> Сделка
+              <Plus size={16} /> <span className="hidden sm:inline">Сделка</span>
             </button>
           </div>
         </div>
@@ -436,8 +436,8 @@ export function CrmPage() {
 
         {tab === "contacts" && (
           <>
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1 max-w-xs">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+              <div className="relative flex-1 max-w-xs w-full sm:w-auto">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: v("text-tertiary") }} />
                 <input
                   type="text"
@@ -512,8 +512,8 @@ export function CrmPage() {
 
         {tab === "deals" && (
           <>
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1 max-w-xs">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+              <div className="relative flex-1 max-w-xs w-full sm:w-auto">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: v("text-tertiary") }} />
                 <input
                   type="text"

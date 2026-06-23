@@ -10,8 +10,8 @@ interface PipelineViewProps {
 
 export const PipelineView = memo(function PipelineView({ stats, isDark }: PipelineViewProps) {
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="space-y-4 overflow-x-auto -mx-1 px-1 scrollbar-hide">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 min-w-[500px]">
         <div
           className="animate-fade-in rounded-xl border p-4 text-center backdrop-blur-sm transition-all duration-200 hover:shadow-lg"
           style={cardStyle("business", isDark)}

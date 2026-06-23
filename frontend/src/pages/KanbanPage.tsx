@@ -282,13 +282,13 @@ export function KanbanPage() {
     <div className="flex flex-col flex-1 min-h-0 space-y-4 max-w-full">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold" style={{ color: v("text-primary") }}>Доски</h1>
-        <button type="button" onClick={() => setShowCreateBoard(true)} className={`${tw.buttonPrimary} flex items-center gap-2`}>
-          <Plus size={16} /> Новая доска
+          <button type="button" onClick={() => setShowCreateBoard(true)} className={`${tw.buttonPrimary} flex items-center gap-1.5`}>
+          <Plus size={16} /> <span className="hidden sm:inline">Новая доска</span>
         </button>
       </div>
 
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-xs">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+        <div className="relative flex-1 max-w-xs w-full sm:w-auto">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: v("text-tertiary") }} />
           <input
             type="text"

@@ -43,11 +43,11 @@ export function SortableBlock({
         background: isDark ? theme.colors.dark.bg.secondary : theme.colors.light.bg.secondary,
         border: `1px solid ${isDark ? theme.colors.dark.border.primary : theme.colors.light.border.primary}`,
       }}
-      className="rounded-2xl border p-4 overflow-hidden touch-none"
+      className="rounded-2xl border p-3 sm:p-4 overflow-hidden touch-none"
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
         <div className="min-w-0">
-          <h3 className="text-base font-semibold break-words" style={{ color: v("text-primary") }}>
+          <h3 className="text-xs sm:text-base font-semibold break-words" style={{ color: v("text-primary") }}>
             {block.title}
           </h3>
           <p className="text-xs capitalize" style={{ color: v("text-muted") }}>

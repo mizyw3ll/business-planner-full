@@ -126,8 +126,7 @@ export function NotificationsPage() {
               className="flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition-all duration-200 hover:scale-105"
               style={{ borderColor: v("border-secondary"), color: v("text-secondary"), background: v("bg-card") }}
             >
-              <CheckCheck size={16} />
-              Прочитать все
+              <CheckCheck size={16} /> <span className="hidden sm:inline">Прочитать все</span>
             </button>
           )}
           {notifs.length > 0 && (
@@ -140,8 +139,7 @@ export function NotificationsPage() {
                 background: "rgba(220,38,38,0.08)",
               }}
             >
-              <Trash2 size={16} />
-              Удалить все
+              <Trash2 size={16} /> <span className="hidden sm:inline">Удалить все</span>
             </button>
           )}
         </div>

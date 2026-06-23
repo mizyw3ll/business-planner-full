@@ -12,9 +12,10 @@ from api import router as api_router
 
 # импорт остальных файлов
 from core.config import settings
+from core.csrf import CSRFMiddleware, generate_csrf_token, get_csrf_response
 from core.models import AccessToken, db_helper
 from core.exceptions import APIException, ValidationException, AuthenticationException, AuthorizationException, NotFoundException, ConflictException
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -200,6 +201,19 @@ async def global_exception_handler(request: Request, exc: Exception):
             "request_id": request_id,
         },
     )
+
+
+# ═══════════════════════════════════════════════════════════════
+# CSRF Token Endpoint
+# ═══════════════════════════════════════════════════════════════
+
+
+@main_app.get("/api/v1/csrf-token")
+async def get_csrf_token(request: Request, response: Response):
+    """Return a CSRF token in both cookie and response body."""
+    token = generate_csrf_token()
+    await get_csrf_response(response, request, token)
+    return {"csrf_token": token}
 
 
 _SLOW_REQUEST_MS = 500
@@ -402,6 +416,7 @@ async def token_device_validation_middleware(request: Request, call_next):
     return await call_next(request)
 
 
+main_app.add_middleware(CSRFMiddleware)
 main_app.add_middleware(GZipMiddleware, minimum_size=1000)
 main_app.add_middleware(
     CORSMiddleware,

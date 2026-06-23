@@ -262,8 +262,7 @@ export function NotesPage() {
           onClick={openNewNote}
           className={`${tw.buttonPrimary} flex items-center gap-1.5`}
         >
-          <Plus size={16} />
-          Заметка
+          <Plus size={16} /> <span className="hidden sm:inline">Заметка</span>
         </button>
       </div>
 
@@ -364,8 +363,7 @@ export function NotesPage() {
                 border: `1.5px dashed ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"}`,
               }}
             >
-              <Plus size={14} />
-              Проект
+              <Plus size={14} /> <span className="hidden sm:inline">Проект</span>
             </button>
           )}
         </div>

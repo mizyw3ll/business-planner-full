@@ -13,7 +13,7 @@ function highlightMdToHtml(md: string): string {
 }
 
 const mdComponents = {
-  p: ({ children, ...props }: any) => <p className="mb-1 last:mb-0 leading-relaxed" {...props}>{children}</p>,
+  p: ({ children, ...props }: any) => <p className="mb-1 last:mb-0 leading-relaxed text-sm sm:text-base" {...props}>{children}</p>,
   strong: ({ children, ...props }: any) => <strong className="font-semibold" {...props}>{children}</strong>,
   em: ({ children, ...props }: any) => <em className="italic" {...props}>{children}</em>,
   del: ({ children, ...props }: any) => <del className="line-through opacity-60" {...props}>{children}</del>,
@@ -28,10 +28,10 @@ const mdComponents = {
   ol: ({ children, ...props }: any) => <ol className="list-decimal pl-5 mb-1 space-y-0.5" {...props}>{children}</ol>,
   li: ({ children, ordered, ...props }: any) => <li className="leading-relaxed" {...props}>{children}</li>,
   a: ({ children, href, ...props }: any) => <a href={href} className="underline text-blue-500 hover:text-blue-600" target="_blank" rel="noopener noreferrer" {...props}>{children}</a>,
-  h1: ({ children, ...props }: any) => <h1 className="text-lg font-bold mb-1 mt-2 first:mt-0" {...props}>{children}</h1>,
-  h2: ({ children, ...props }: any) => <h2 className="text-base font-bold mb-1 mt-2 first:mt-0" {...props}>{children}</h2>,
-  h3: ({ children, ...props }: any) => <h3 className="text-sm font-bold mb-1 mt-2 first:mt-0" {...props}>{children}</h3>,
-  h4: ({ children, ...props }: any) => <h4 className="text-sm font-semibold mb-1 mt-1 first:mt-0" {...props}>{children}</h4>,
+  h1: ({ children, ...props }: any) => <h1 className="text-sm sm:text-lg font-bold mb-1 mt-2 first:mt-0" {...props}>{children}</h1>,
+  h2: ({ children, ...props }: any) => <h2 className="text-xs sm:text-base font-bold mb-1 mt-2 first:mt-0" {...props}>{children}</h2>,
+  h3: ({ children, ...props }: any) => <h3 className="text-xs sm:text-sm font-bold mb-1 mt-2 first:mt-0" {...props}>{children}</h3>,
+  h4: ({ children, ...props }: any) => <h4 className="text-xs sm:text-sm font-semibold mb-1 mt-1 first:mt-0" {...props}>{children}</h4>,
   blockquote: ({ children, ...props }: any) => <blockquote className="pl-3 border-l-2 border-current opacity-60 italic my-1" {...props}>{children}</blockquote>,
   hr: (props: any) => <hr className="my-2 border-current opacity-20" {...props} />,
   mark: ({ children, ...props }: any) => <mark className="px-0.5 rounded bg-yellow-200/60 dark:bg-yellow-500/30" {...props}>{children}</mark>,

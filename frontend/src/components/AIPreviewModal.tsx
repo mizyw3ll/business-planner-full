@@ -111,7 +111,7 @@ export function AIPreviewModal({
             />
           ) : (
             <div
-              className="rounded-xl border p-4"
+              className="rounded-xl border p-3 sm:p-4 text-sm sm:text-base"
               style={{
                 background: v("bg-input"),
                 borderColor: v("border-muted"),

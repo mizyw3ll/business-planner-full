@@ -15,18 +15,24 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .venv/
+*.egg-info/
 
 # ── IDE / Tools ─────────────────────────────────────────────
 .vscode/
 .idea/
 .opencode/
+.prettier*
+.pre-commit-config.yaml
 
-# ── Docker Compose ─────────────────────────────────────────
+# ── Logs ────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── Docker ──────────────────────────────────────────────────
 docker-compose.prod.yml
+docker-compose.local.yml
+pg_data/
 
 # ── OS ──────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
-
-# ── Docker volumes ──────────────────────────────────────────
-pg_data/

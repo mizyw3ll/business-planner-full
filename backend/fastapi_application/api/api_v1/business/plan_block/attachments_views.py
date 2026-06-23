@@ -61,10 +61,7 @@ async def download_attachment(
     try:
         data, content_type = await att.get_attachment_bytes(att_plan_id, safe_filename)
     except FileNotFoundError:
-        try:
-            data, content_type = await att.get_attachment_bytes(att_plan_id, filename)
-        except FileNotFoundError:
-            raise HTTPException(status_code=404, detail="Файл не найден")
+        raise HTTPException(status_code=404, detail="Файл не найден")
 
     encoded_name = quote(filename)
     disposition = f"attachment; filename*=UTF-8''{encoded_name}"

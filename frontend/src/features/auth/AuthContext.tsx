@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { User } from "../../api";
+import { fetchCsrfToken } from "../../api";
 import { queryKeys } from "../../lib/queryClient";
 import * as authApi from "./authApi";
 
@@ -31,6 +32,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      try {
+        await fetchCsrfToken();
+      } catch {
+        // CSRF token fetch may fail on first load — non-critical
+      }
       try {
         const cached = queryClient.getQueryData<User>(queryKeys.user);
         const me = cached ?? (await authApi.me());

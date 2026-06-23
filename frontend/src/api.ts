@@ -3,6 +3,15 @@ import { extractApiError } from "./shared/utils/extractApiError";
 
 export const TOKEN_KEY = "remain.accessToken";
 
+function getCsrfToken(): string | null {
+  const match = document.cookie.match(/(?:^|;\s*)csrf-token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+export async function fetchCsrfToken(): Promise<void> {
+  await api.get("/csrf-token");
+}
+
 export type User = {
   id: number;
   email: string;
@@ -139,6 +148,13 @@ api.interceptors.request.use((config) => {
   (config as typeof config & { metadata?: { startTime: number } }).metadata = {
     startTime: performance.now(),
   };
+  const method = (config.method ?? "get").toLowerCase();
+  if (["post", "put", "patch", "delete"].includes(method)) {
+    const token = getCsrfToken();
+    if (token) {
+      config.headers.set("x-csrf-token", token);
+    }
+  }
   return config;
 });
 
@@ -659,8 +675,9 @@ export type CalendarEvent = {
   title: string;
   description?: string | null;
   event_date: string;
-  notify_before?: number | null;
+  notify_before?: number[] | null;
   notified_at?: string | null;
+  notified_values?: number[] | null;
   event_type: string;
   related_plan_id?: number | null;
   related_block_id?: number | null;
@@ -682,7 +699,7 @@ export async function createCalendarEventApi(payload: {
   description?: string;
   event_date: string;
   event_type?: string;
-  notify_before?: number | null;
+  notify_before?: number[] | null;
 }) {
   const { data } = await api.post<CalendarEvent>(`/calendar/events`, payload);
   return data;
@@ -690,7 +707,7 @@ export async function createCalendarEventApi(payload: {
 
 export async function updateCalendarEventApi(
   eventId: number,
-  payload: { title?: string; description?: string; event_date?: string; notify_before?: number | null },
+  payload: { title?: string; description?: string; event_date?: string; notify_before?: number[] | null },
 ) {
   const { data } = await api.patch<CalendarEvent>(`/calendar/events/${eventId}`, payload);
   return data;
@@ -866,8 +883,9 @@ export type TaxEvent = {
   is_recurring: boolean;
   recurrence_rule?: string | null;
   is_completed: boolean;
-  notify_before?: number | null;
+  notify_before?: number[] | null;
   notified_at?: string | null;
+  notified_values?: number[] | null;
   created_at: string;
   updated_at: string;
 };
@@ -885,7 +903,7 @@ export async function createTaxEventApi(payload: {
   amount?: number;
   is_recurring?: boolean;
   recurrence_rule?: string;
-  notify_before?: number | null;
+  notify_before?: number[] | null;
 }) {
   const { data } = await api.post<TaxEvent>("/tax-events", payload);
   return data;

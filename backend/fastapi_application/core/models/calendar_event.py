@@ -5,6 +5,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    JSON,
     String,
     Text,
     text,
@@ -27,15 +28,20 @@ class CalendarEvent(Base, IdIntPkMixin):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     event_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    notify_before: Mapped[int | None] = mapped_column(
-        Integer,
+    notify_before: Mapped[list[int] | None] = mapped_column(
+        JSON,
         nullable=True,
-        comment="За сколько минут до события уведомить",
+        comment="За сколько минут до события уведомить (массив)",
     )
     notified_at: Mapped[DateTime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
         comment="Когда было отправлено уведомление",
+    )
+    notified_values: Mapped[list[int] | None] = mapped_column(
+        JSON,
+        nullable=True,
+        comment="Какие значения notify_before уже сработали",
     )
     event_type: Mapped[str] = mapped_column(
         String(50),

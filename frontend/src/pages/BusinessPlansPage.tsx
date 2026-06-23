@@ -192,8 +192,8 @@ export function BusinessPlansPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-xs">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+        <div className="relative flex-1 max-w-xs w-full sm:w-auto">
           <Search
             size={16}
             className="absolute left-3 top-1/2 -translate-y-1/2"
