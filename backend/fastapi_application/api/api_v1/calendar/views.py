@@ -98,7 +98,6 @@ async def get_calendar_pending_notifications(
             and_(
                 CalendarEvent.user_id == user.id,
                 CalendarEvent.notify_before.isnot(None),
-                CalendarEvent.event_date >= now,
             )
         )
         .order_by(CalendarEvent.event_date)
