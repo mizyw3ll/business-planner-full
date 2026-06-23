@@ -32,11 +32,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        await fetchCsrfToken();
-      } catch (e) {
-        console.warn("[Auth] CSRF token fetch failed:", e);
-      }
+      // Fire-and-forget CSRF refresh — don't block auth
+      fetchCsrfToken().catch(() => {});
+
       try {
         const cached = queryClient.getQueryData<User>(queryKeys.user);
         if (cached) {
@@ -45,10 +43,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           return;
         }
-        // Retry until backend is ready (up to 30s — handles slow DB + migrations)
-        let lastError: unknown;
-        const deadline = Date.now() + 30_000;
-        while (Date.now() < deadline) {
+        // Retry until backend is ready.
+        // Network errors (502/503/connection refused) = backend still starting → keep retrying.
+        // 401 = backend says "not authenticated" → give up immediately.
+        while (!cancelled) {
           try {
             const me = await authApi.me();
             if (!cancelled) {
@@ -56,16 +54,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setUser(me);
             }
             return;
-          } catch (e) {
-            lastError = e;
+          } catch (err: any) {
+            const status = err?.response?.status;
+            // Definitive 401 = user is not logged in, stop retrying
+            if (status === 401) {
+              if (!cancelled) {
+                queryClient.removeQueries({ queryKey: queryKeys.user });
+                setUser(null);
+              }
+              return;
+            }
+            // Network error or 5xx = backend not ready, keep retrying
             await new Promise((r) => setTimeout(r, 2000));
           }
-        }
-        throw lastError;
-      } catch {
-        if (!cancelled) {
-          queryClient.removeQueries({ queryKey: queryKeys.user });
-          setUser(null);
         }
       } finally {
         if (!cancelled) setLoading(false);

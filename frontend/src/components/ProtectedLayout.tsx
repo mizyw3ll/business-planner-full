@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Menu, ArrowLeft, Search } from "lucide-react";
+import toast from "react-hot-toast";
 import { useAuth } from "../features/auth/AuthContext";
 import { Sidebar } from "./Sidebar";
 import { SettingsModal } from "./SettingsModal";
@@ -20,6 +21,8 @@ export function ProtectedLayout() {
   const { open, tab, openModal, closeModal } = useSettingsModalState();
   const anyModalOpen = useAnyModalOpen();
 
+  const calendarNotifiedRef = useRef<Set<number>>(new Set());
+
   useEffect(() => {
     if (!user) return;
     let mounted = true;
@@ -31,13 +34,16 @@ export function ProtectedLayout() {
         const pending = await getCalendarPendingNotificationsApi();
         if (!mounted) return;
         for (const ev of pending) {
-          await createNotificationApi({
+          if (calendarNotifiedRef.current.has(ev.id)) continue;
+          calendarNotifiedRef.current.add(ev.id);
+          toast(`🔔 ${ev.title} — событие начинается!`, { duration: 8000 });
+          createNotificationApi({
             title: ev.title,
             body: ev.description ?? undefined,
             source_type: "calendar_event",
             source_id: ev.id,
-          });
-          await markCalendarNotifiedApi(ev.id);
+          }).catch(() => {});
+          markCalendarNotifiedApi(ev.id).catch(() => {});
         }
       } catch {
         /* silent */
