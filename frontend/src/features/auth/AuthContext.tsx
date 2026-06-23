@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { User } from "../../api";
-import { fetchCsrfToken } from "../../api";
+import { fetchCsrfToken, stopCsrfRefresh } from "../../api";
 import { queryKeys } from "../../lib/queryClient";
 import * as authApi from "./authApi";
 
@@ -34,8 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         await fetchCsrfToken();
-      } catch {
-        // CSRF token fetch may fail on first load — non-critical
+      } catch (e) {
+        console.warn("[Auth] CSRF token fetch failed:", e);
       }
       try {
         const cached = queryClient.getQueryData<User>(queryKeys.user);
@@ -53,7 +53,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      stopCsrfRefresh();
+    };
   }, [queryClient]);
 
   const signin = useCallback(

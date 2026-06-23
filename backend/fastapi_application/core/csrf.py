@@ -5,6 +5,7 @@
   matching the csrf-token cookie value
 - Auth and GET endpoints are exempt
 """
+import logging
 import secrets
 from datetime import timedelta
 
@@ -15,6 +16,8 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 CSRF_COOKIE_NAME = "csrf-token"
 CSRF_HEADER_NAME = "x-csrf-token"
 CSRF_COOKIE_MAX_AGE = int(timedelta(hours=1).total_seconds())  # 1 hour
+
+logger = logging.getLogger("csrf")
 
 # Paths that are exempt from CSRF validation
 CSRF_EXEMPT_PATHS = frozenset({
@@ -66,6 +69,10 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         csrf_header = request.headers.get(CSRF_HEADER_NAME)
 
         if not csrf_cookie or not csrf_header or csrf_cookie != csrf_header:
+            logger.warning(
+                "CSRF validation failed: path=%s has_cookie=%s has_header=%s method=%s",
+                path, bool(csrf_cookie), bool(csrf_header), request.method,
+            )
             from fastapi.responses import JSONResponse
             return JSONResponse(
                 status_code=403,

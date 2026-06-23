@@ -3,13 +3,38 @@ import { extractApiError } from "./shared/utils/extractApiError";
 
 export const TOKEN_KEY = "remain.accessToken";
 
+let csrfRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+const CSRF_REFRESH_MS = 50 * 60 * 1000; // 50 minutes (cookie lives 1 hour)
+
 function getCsrfToken(): string | null {
   const match = document.cookie.match(/(?:^|;\s*)csrf-token=([^;]*)/);
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+let csrfFetchInFlight: Promise<void> | null = null;
+
 export async function fetchCsrfToken(): Promise<void> {
-  await api.get("/csrf-token");
+  if (csrfFetchInFlight) return csrfFetchInFlight;
+  csrfFetchInFlight = api.get("/csrf-token").then(() => {
+    scheduleCsrfRefresh();
+  }).finally(() => {
+    csrfFetchInFlight = null;
+  });
+  return csrfFetchInFlight;
+}
+
+function scheduleCsrfRefresh() {
+  if (csrfRefreshTimer) clearTimeout(csrfRefreshTimer);
+  csrfRefreshTimer = setTimeout(() => {
+    fetchCsrfToken().catch(() => {});
+  }, CSRF_REFRESH_MS);
+}
+
+export function stopCsrfRefresh() {
+  if (csrfRefreshTimer) {
+    clearTimeout(csrfRefreshTimer);
+    csrfRefreshTimer = null;
+  }
 }
 
 export type User = {
@@ -144,13 +169,17 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
   (config as typeof config & { metadata?: { startTime: number } }).metadata = {
     startTime: performance.now(),
   };
   const method = (config.method ?? "get").toLowerCase();
   if (["post", "put", "patch", "delete"].includes(method)) {
-    const token = getCsrfToken();
+    let token = getCsrfToken();
+    if (!token) {
+      await fetchCsrfToken();
+      token = getCsrfToken();
+    }
     if (token) {
       config.headers.set("x-csrf-token", token);
     }
@@ -171,9 +200,26 @@ api.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
-    const config = error.config as (typeof error.config & { metadata?: { startTime: number } }) | undefined;
+  async (error) => {
+    const config = error.config as (typeof error.config & { metadata?: { startTime: number }; _csrfRetried?: boolean }) | undefined;
     const status = error.response?.status as number | undefined;
+
+    // Auto-retry once on CSRF 403: re-fetch token and retry
+    if (
+      status === 403 &&
+      error.response?.data?.error_code === "CSRF_FAILED" &&
+      config &&
+      !config._csrfRetried
+    ) {
+      config._csrfRetried = true;
+      await fetchCsrfToken();
+      const token = getCsrfToken();
+      if (token && config.headers) {
+        config.headers.set("x-csrf-token", token);
+      }
+      return api.request(config);
+    }
+
     // Don't log 401 on /users/me — expected when not logged in
     const isAuthCheck = config?.url?.includes("/users/me") && status === 401;
     if (!isAuthCheck && config?.metadata?.startTime !== undefined) {

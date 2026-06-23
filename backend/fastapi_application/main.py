@@ -25,6 +25,7 @@ from core.validation_translator import translate_request_validation
 from services import currency_sync
 from sqlalchemy import delete, select
 from core.logging import StructuredLogger
+from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
 from utils import get_client_ip
 
 # Пути, которые не требуют валидации токена
@@ -425,6 +426,8 @@ main_app.add_middleware(
     allow_methods=settings.cors.allow_methods,
     allow_headers=settings.cors.allow_headers,
 )
+# Must be outermost — reads X-Forwarded-Proto from nginx so request.url.scheme == "https"
+main_app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
 
 main_app.include_router(
     api_router,
