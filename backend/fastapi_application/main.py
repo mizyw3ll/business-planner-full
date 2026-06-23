@@ -25,8 +25,17 @@ from core.validation_translator import translate_request_validation
 from services import currency_sync
 from sqlalchemy import delete, select
 from core.logging import StructuredLogger
-from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
 from utils import get_client_ip
+from starlette.middleware.base import BaseHTTPMiddleware
+
+
+class ForwardedProtoMiddleware(BaseHTTPMiddleware):
+    """Read X-Forwarded-Proto from nginx so request.url.scheme returns 'https'."""
+    async def dispatch(self, request, call_next):
+        if request.headers.get("x-forwarded-proto") == "https":
+            request.scope["scheme"] = "https"
+        return await call_next(request)
+
 
 # Пути, которые не требуют валидации токена
 _AUTH_SKIP_PATHS = frozenset({
@@ -427,7 +436,7 @@ main_app.add_middleware(
     allow_headers=settings.cors.allow_headers,
 )
 # Must be outermost — reads X-Forwarded-Proto from nginx so request.url.scheme == "https"
-main_app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
+main_app.add_middleware(ForwardedProtoMiddleware)
 
 main_app.include_router(
     api_router,
