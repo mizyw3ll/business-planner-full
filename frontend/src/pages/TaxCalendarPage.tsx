@@ -38,15 +38,19 @@ const EVENT_TYPES = [
   { value: "other", label: "Другое" },
 ];
 
-const NOTIFY_OPTIONS = [
-  { value: 5, label: "За 5 минут" },
-  { value: 10, label: "За 10 минут" },
-  { value: 15, label: "За 15 минут" },
-  { value: 30, label: "За 30 минут" },
-  { value: 60, label: "За 1 час" },
-  { value: 120, label: "За 2 часа" },
-  { value: 1440, label: "За 1 день" },
-];
+type NotifyUnit = "minutes" | "hours" | "days";
+
+function minutesToUnit(minutes: number): { value: number; unit: NotifyUnit } {
+  if (minutes >= 1440 && minutes % 1440 === 0) return { value: minutes / 1440, unit: "days" };
+  if (minutes >= 60 && minutes % 60 === 0) return { value: minutes / 60, unit: "hours" };
+  return { value: minutes, unit: "minutes" };
+}
+
+function unitToMinutes(value: number, unit: NotifyUnit): number {
+  if (unit === "days") return value * 1440;
+  if (unit === "hours") return value * 60;
+  return value;
+}
 
 type FormState = {
   title: string;
@@ -54,7 +58,8 @@ type FormState = {
   event_date: string;
   event_type: string;
   amount: string;
-  notify_before: number[];
+  notify_value: number;
+  notify_unit: NotifyUnit;
 };
 
 function getLocalDatetimeStr() {
@@ -84,9 +89,13 @@ function formatEventDate(iso: string) {
   });
 }
 
-function getNotifyLabel(minutes: number[] | null | undefined) {
-  if (!minutes || minutes.length === 0) return null;
-  return minutes.map((m) => NOTIFY_OPTIONS.find((o) => o.value === m)?.label ?? `За ${m} мин`).join(", ");
+function getNotifyLabel(notifyBefore: number[] | null | undefined) {
+  if (!notifyBefore || notifyBefore.length === 0) return null;
+  const m = notifyBefore[0];
+  const { value, unit } = minutesToUnit(m);
+  if (unit === "days") return `За ${value} дн.`;
+  if (unit === "hours") return `За ${value} ч.`;
+  return `За ${value} мин.`;
 }
 
 const emptyForm: FormState = {
@@ -95,7 +104,8 @@ const emptyForm: FormState = {
   event_date: getLocalDatetimeStr(),
   event_type: "tax",
   amount: "",
-  notify_before: [30],
+  notify_value: 30,
+  notify_unit: "minutes",
 };
 
 export function TaxCalendarPage() {
@@ -168,6 +178,8 @@ export function TaxCalendarPage() {
   }
 
 function openEditForm(event: TaxEvent) {
+  const existing = event.notify_before && event.notify_before.length > 0 ? event.notify_before[0] : null;
+  const { value, unit } = existing ? minutesToUnit(existing) : { value: 30, unit: "minutes" as NotifyUnit };
   setEditingEvent(event);
   setForm({
     title: event.title,
@@ -175,7 +187,8 @@ function openEditForm(event: TaxEvent) {
     event_date: isoToDatetimeLocal(event.event_date),
     event_type: event.event_type,
     amount: event.amount ? String(event.amount) : "",
-    notify_before: event.notify_before ?? [30],
+    notify_value: value,
+    notify_unit: unit,
   });
   setOpenForm(true);
 }
@@ -187,26 +200,21 @@ function openEditForm(event: TaxEvent) {
       toast.error("Некорректная дата");
       return;
     }
+    const notifyMinutes = unitToMinutes(form.notify_value, form.notify_unit);
+    const payload = {
+      title: form.title,
+      description: form.description || undefined,
+      event_date: eventDate.toISOString(),
+      event_type: form.event_type,
+      amount: form.amount ? parseInt(form.amount) : undefined,
+      notify_before: notifyMinutes > 0 ? [notifyMinutes] : null,
+    };
     try {
       if (editingEvent) {
-        await updateTaxEventApi(editingEvent.id, {
-          title: form.title,
-          description: form.description || undefined,
-          event_date: eventDate.toISOString(),
-          event_type: form.event_type,
-          amount: form.amount ? parseInt(form.amount) : undefined,
-          notify_before: form.notify_before.length > 0 ? form.notify_before : null,
-        });
+        await updateTaxEventApi(editingEvent.id, payload);
         toast.success("Событие обновлено");
       } else {
-        await createTaxEventApi({
-          title: form.title,
-          description: form.description || undefined,
-          event_date: eventDate.toISOString(),
-          event_type: form.event_type,
-          amount: form.amount ? parseInt(form.amount) : undefined,
-          notify_before: form.notify_before.length > 0 ? form.notify_before : null,
-        });
+        await createTaxEventApi(payload);
         toast.success("Событие создано");
       }
       setOpenForm(false);
@@ -546,30 +554,27 @@ function openEditForm(event: TaxEvent) {
               />
               <div>
                 <label className="text-xs font-medium block mb-1.5" style={{ color: v("text-muted") }}>Напоминание</label>
-                <div className="flex flex-wrap gap-2">
-                  {NOTIFY_OPTIONS.map((o) => (
-                    <label
-                      key={o.value}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs cursor-pointer transition-colors hover:bg-[var(--bg-hover)]"
-                      style={{
-                        borderColor: form.notify_before.includes(o.value) ? "var(--color-primary)" : "var(--border-secondary)",
-                        background: form.notify_before.includes(o.value) ? "rgba(99,102,241,0.08)" : "transparent",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={form.notify_before.includes(o.value)}
-                        onChange={() => {
-                          const arr = form.notify_before.includes(o.value)
-                            ? form.notify_before.filter((v) => v !== o.value)
-                            : [...form.notify_before, o.value].sort((a, b) => a - b);
-                          setForm({ ...form, notify_before: arr });
-                        }}
-                        className="rounded accent-indigo-500"
-                      />
-                      {o.label}
-                    </label>
-                  ))}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs" style={{ color: v("text-muted") }}>За</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={999}
+                    value={form.notify_value}
+                    onChange={(e) => setForm({ ...form, notify_value: Math.max(1, parseInt(e.target.value) || 1) })}
+                    className="w-16 rounded-xl border px-2.5 py-2 text-sm text-center"
+                    style={inputStyle(isDark)}
+                  />
+                  <select
+                    value={form.notify_unit}
+                    onChange={(e) => setForm({ ...form, notify_unit: e.target.value as NotifyUnit })}
+                    className="rounded-xl border px-2.5 py-2 text-sm"
+                    style={inputStyle(isDark)}
+                  >
+                    <option value="minutes">мин.</option>
+                    <option value="hours">ч.</option>
+                    <option value="days">дн.</option>
+                  </select>
                 </div>
               </div>
               <textarea

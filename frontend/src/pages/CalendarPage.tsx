@@ -17,15 +17,25 @@ import { useModalRegistration } from "../hooks/useModalOpen";
 import { CalendarGrid } from "./calendar/CalendarGrid";
 import { EventList } from "./calendar/EventList";
 
-const NOTIFY_OPTIONS = [
-  { value: 5, label: "За 5 минут" },
-  { value: 10, label: "За 10 минут" },
-  { value: 15, label: "За 15 минут" },
-  { value: 30, label: "За 30 минут" },
-  { value: 60, label: "За 1 час" },
-  { value: 120, label: "За 2 часа" },
-  { value: 1440, label: "За 1 день" },
-];
+type NotifyUnit = "minutes" | "hours" | "days";
+
+function minutesToUnit(minutes: number): { value: number; unit: NotifyUnit } {
+  if (minutes >= 1440 && minutes % 1440 === 0) return { value: minutes / 1440, unit: "days" };
+  if (minutes >= 60 && minutes % 60 === 0) return { value: minutes / 60, unit: "hours" };
+  return { value: minutes, unit: "minutes" };
+}
+
+function unitToMinutes(value: number, unit: NotifyUnit): number {
+  if (unit === "days") return value * 1440;
+  if (unit === "hours") return value * 60;
+  return value;
+}
+
+function formatNotifyLabel(value: number, unit: NotifyUnit): string {
+  if (unit === "days") return `За ${value} дн.`;
+  if (unit === "hours") return `За ${value} ч.`;
+  return `За ${value} мин.`;
+}
 
 function formatDate(d: Date) {
   const y = d.getFullYear();
@@ -68,14 +78,16 @@ export function CalendarPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newDate, setNewDate] = useState(getLocalDatetimeStr());
   const [newDesc, setNewDesc] = useState("");
-  const [newNotify, setNewNotify] = useState<number[]>([30]);
+  const [newNotifyValue, setNewNotifyValue] = useState(30);
+  const [newNotifyUnit, setNewNotifyUnit] = useState<NotifyUnit>("minutes");
 
   const [editEvent, setEditEvent] = useState<CalendarEvent | null>(null);
   useModalRegistration(!!editEvent);
   const [editTitle, setEditTitle] = useState("");
   const [editDate, setEditDate] = useState("");
   const [editDesc, setEditDesc] = useState("");
-  const [editNotify, setEditNotify] = useState<number[]>([30]);
+  const [editNotifyValue, setEditNotifyValue] = useState(30);
+  const [editNotifyUnit, setEditNotifyUnit] = useState<NotifyUnit>("minutes");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("event_date_asc");
   const [deleteTarget, setDeleteTarget] = useState<CalendarEvent | null>(null);
@@ -109,15 +121,16 @@ export function CalendarPage() {
     if (!newTitle.trim()) return;
     try {
       const eventDate = new Date(newDate);
+      const notifyMinutes = unitToMinutes(newNotifyValue, newNotifyUnit);
       await createCalendarEventApi({
         title: newTitle.trim(),
         description: newDesc || undefined,
         event_date: eventDate.toISOString(),
-        notify_before: newNotify.length > 0 ? newNotify : null,
+        notify_before: notifyMinutes > 0 ? [notifyMinutes] : null,
       });
       toast.success("Событие создано");
       setShowCreate(false);
-      setNewTitle(""); setNewDesc(""); setNewNotify([30]); setNewDate(getLocalDatetimeStr());
+      setNewTitle(""); setNewDesc(""); setNewNotifyValue(30); setNewNotifyUnit("minutes"); setNewDate(getLocalDatetimeStr());
       await fetchEvents();
     } catch (err: any) {
       toast.error(err?.userMessage || "Ошибка создания события");
@@ -129,18 +142,27 @@ export function CalendarPage() {
     setEditTitle(event.title);
     setEditDate(isoToDatetimeLocal(event.event_date));
     setEditDesc(event.description || "");
-    setEditNotify(event.notify_before ?? [30]);
+    const existing = event.notify_before && event.notify_before.length > 0 ? event.notify_before[0] : null;
+    if (existing) {
+      const { value, unit } = minutesToUnit(existing);
+      setEditNotifyValue(value);
+      setEditNotifyUnit(unit);
+    } else {
+      setEditNotifyValue(30);
+      setEditNotifyUnit("minutes");
+    }
   }
 
   async function handleEdit() {
     if (!editEvent || !editTitle.trim()) return;
     try {
       const eventDate = new Date(editDate);
+      const notifyMinutes = unitToMinutes(editNotifyValue, editNotifyUnit);
       await updateCalendarEventApi(editEvent.id, {
         title: editTitle.trim(),
         description: editDesc || undefined,
         event_date: eventDate.toISOString(),
-        notify_before: editNotify.length > 0 ? editNotify : null,
+        notify_before: notifyMinutes > 0 ? [notifyMinutes] : null,
       });
       toast.success("Событие обновлено");
       setEditEvent(null);
@@ -183,21 +205,18 @@ export function CalendarPage() {
     }
   }
 
-  function toggleNotify(arr: number[], value: number): number[] {
-    if (arr.includes(value)) return arr.filter((v) => v !== value);
-    return [...arr, value].sort((a, b) => a - b);
-  }
-
   const EventForm = ({ mode }: { mode: "create" | "edit" }) => {
     const isCreate = mode === "create";
     const title = isCreate ? newTitle : editTitle;
     const date = isCreate ? newDate : editDate;
     const desc = isCreate ? newDesc : editDesc;
-    const notify = isCreate ? newNotify : editNotify;
+    const notifyValue = isCreate ? newNotifyValue : editNotifyValue;
+    const notifyUnit = isCreate ? newNotifyUnit : editNotifyUnit;
     const setTitle = isCreate ? setNewTitle : setEditTitle;
     const setDate = isCreate ? setNewDate : setEditDate;
     const setDesc = isCreate ? setNewDesc : setEditDesc;
-    const setNotify = isCreate ? setNewNotify : setEditNotify;
+    const setNotifyValue = isCreate ? setNewNotifyValue : setEditNotifyValue;
+    const setNotifyUnit = isCreate ? setNewNotifyUnit : setEditNotifyUnit;
 
     return (
       <div className="space-y-3">
@@ -215,25 +234,27 @@ export function CalendarPage() {
         </div>
         <div>
           <label className="text-xs font-medium block mb-1.5" style={{ color: v("text-muted") }}>Напоминание</label>
-          <div className="flex flex-wrap gap-2">
-            {NOTIFY_OPTIONS.map((o) => (
-              <label
-                key={o.value}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs cursor-pointer transition-colors hover:bg-[var(--bg-hover)]"
-                style={{
-                  borderColor: notify.includes(o.value) ? "var(--color-primary)" : "var(--border-secondary)",
-                  background: notify.includes(o.value) ? "rgba(99,102,241,0.08)" : "transparent",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={notify.includes(o.value)}
-                  onChange={() => setNotify(toggleNotify(notify, o.value))}
-                  className="rounded accent-indigo-500"
-                />
-                {o.label}
-              </label>
-            ))}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs" style={{ color: v("text-muted") }}>За</span>
+            <input
+              type="number"
+              min={1}
+              max={999}
+              value={notifyValue}
+              onChange={(e) => setNotifyValue(Math.max(1, parseInt(e.target.value) || 1))}
+              className="w-16 rounded-xl border px-2.5 py-2 text-sm text-center"
+              style={inputStyle(isDark)}
+            />
+            <select
+              value={notifyUnit}
+              onChange={(e) => setNotifyUnit(e.target.value as NotifyUnit)}
+              className="rounded-xl border px-2.5 py-2 text-sm"
+              style={inputStyle(isDark)}
+            >
+              <option value="minutes">мин.</option>
+              <option value="hours">ч.</option>
+              <option value="days">дн.</option>
+            </select>
           </div>
         </div>
       </div>

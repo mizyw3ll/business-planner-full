@@ -109,7 +109,7 @@ export function SettingsModal({ open, tab, onClose }: Props) {
 
           <div className="flex flex-1 overflow-hidden max-md:flex-col">
             <div
-              className="flex max-md:flex-row max-md:gap-2 max-md:px-4 max-md:pt-2 md:flex-col md:gap-1 md:p-3 md:w-48 md:shrink-0"
+              className="flex max-md:flex-row max-md:gap-2 max-md:px-4 max-md:pt-2 max-md:overflow-x-auto max-md:scrollbar-hide md:flex-col md:gap-1 md:p-3 md:w-48 md:shrink-0"
               style={{
                 borderColor: "var(--border-muted)",
                 borderBottom: "1px solid var(--border-muted)",
@@ -296,7 +296,7 @@ function TabBtn({ active, onClick, label }: { active: boolean; onClick: () => vo
   return (
     <button
       onClick={onClick}
-      className={`rounded-xl px-4 py-3 text-sm font-bold transition-all text-left ${
+      className={`shrink-0 whitespace-nowrap rounded-xl px-4 py-3 text-sm font-bold transition-all text-left ${
         active
           ? "bg-[var(--bg-active)] text-[var(--text-primary)] shadow-lg shadow-indigo-500/10"
           : "text-[var(--text-muted)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"

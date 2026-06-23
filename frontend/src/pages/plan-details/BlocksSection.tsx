@@ -46,7 +46,7 @@ export const BlocksSection = memo(function BlocksSection({
 }: BlocksSectionProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 0, tolerance: 10 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 10 } }),
   );
   const { chartPointsById, chartPointsLoading } = useChartEmbedPoints(blocks);
 
