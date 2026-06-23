@@ -39,11 +39,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       try {
         const cached = queryClient.getQueryData<User>(queryKeys.user);
-        const me = cached ?? (await authApi.me());
-        if (!cancelled) {
-          queryClient.setQueryData(queryKeys.user, me);
-          setUser(me);
+        if (cached) {
+          if (!cancelled) {
+            setUser(cached);
+          }
+          return;
         }
+        // Retry until backend is ready (up to 30s — handles slow DB + migrations)
+        let lastError: unknown;
+        const deadline = Date.now() + 30_000;
+        while (Date.now() < deadline) {
+          try {
+            const me = await authApi.me();
+            if (!cancelled) {
+              queryClient.setQueryData(queryKeys.user, me);
+              setUser(me);
+            }
+            return;
+          } catch (e) {
+            lastError = e;
+            await new Promise((r) => setTimeout(r, 2000));
+          }
+        }
+        throw lastError;
       } catch {
         if (!cancelled) {
           queryClient.removeQueries({ queryKey: queryKeys.user });
