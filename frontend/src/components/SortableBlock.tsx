@@ -17,6 +17,7 @@ interface SortableBlockProps {
   chartPointsById?: Record<number, ChartPoint[]>;
   chartPointsLoading?: boolean;
   readOnly?: boolean;
+  hideActions?: boolean;
 }
 
 export function SortableBlock({
@@ -30,8 +31,9 @@ export function SortableBlock({
   chartPointsById,
   chartPointsLoading,
   readOnly,
+  hideActions,
 }: SortableBlockProps) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: block.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
 
   const actionBtnClass = "rounded-lg border px-2.5 py-1.5 text-xs transition-colors";
 
@@ -42,6 +44,7 @@ export function SortableBlock({
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
+        opacity: isDragging ? 0 : 1,
         background: isDark ? theme.colors.dark.bg.secondary : theme.colors.light.bg.secondary,
         border: `1px solid ${isDark ? theme.colors.dark.border.primary : theme.colors.light.border.primary}`,
       }}
@@ -57,16 +60,18 @@ export function SortableBlock({
             {block.block_type.replace("_", " ")}
           </p>
         </div>
-        {!readOnly && (
+        {!readOnly && !hideActions && (
           <button
-            className="rounded-lg border px-2 py-1 text-xs transition-colors shrink-0 md:hidden"
+            className="rounded-lg border px-2 py-1 text-xs transition-colors shrink-0 flex items-center gap-1"
             style={{ borderColor: v("border-secondary"), color: v("text-secondary"), cursor: "grab" }}
             {...attributes}
             {...listeners}
             onMouseEnter={(e) => { e.currentTarget.style.background = v("bg-hover"); }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            title="Перетащить"
           >
             <GripVertical size={16} />
+            <span className="hidden sm:inline">Перетащить</span>
           </button>
         )}
       </div>
@@ -95,25 +100,15 @@ export function SortableBlock({
       )}
 
       {/* Action buttons — bottom row */}
-      {!readOnly && (
+      {!hideActions && (
         <div className="flex items-center gap-1.5 mt-3 pt-2.5" style={{ borderTop: `1px solid ${isDark ? "rgba(99,102,241,0.12)" : "rgba(99,102,241,0.08)"}` }}>
-          {/* Desktop drag handle */}
-          <button
-            className={`${actionBtnClass} hidden md:flex items-center gap-1`}
-            style={{ borderColor: v("border-secondary"), color: v("text-secondary"), cursor: "grab" }}
-            {...attributes}
-            {...listeners}
-            onMouseEnter={(e) => { e.currentTarget.style.background = v("bg-hover"); }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-          >
-            <GripVertical size={12} /> Перетащить
-          </button>
           <button
             className={actionBtnClass}
             style={{ borderColor: v("border-secondary"), color: v("text-secondary") }}
             onMouseEnter={(e) => { e.currentTarget.style.background = v("bg-hover"); }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
             onClick={() => onEdit(block)}
+            title="Редактировать"
           >
             <Pencil size={14} />
           </button>
@@ -123,6 +118,7 @@ export function SortableBlock({
             onMouseEnter={(e) => { e.currentTarget.style.background = v("bg-hover"); }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
             onClick={() => onComments(block)}
+            title="Комментарии"
           >
             <MessageCircle size={14} />
             {(block.comments_count ?? 0) > 0 && (
@@ -150,6 +146,7 @@ export function SortableBlock({
             onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(220, 38, 38, 0.2)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
             onClick={() => onDelete(block)}
+            title="Удалить блок"
           >
             <Trash2 size={14} />
           </button>

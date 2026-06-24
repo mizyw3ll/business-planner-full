@@ -31,7 +31,10 @@ logs/
 # ── Docker ──────────────────────────────────────────────────
 docker-compose.prod.yml
 docker-compose.local.yml
+**/Dockerfile.local
+**/entrypoint.local.sh
 pg_data/
+pg_data_local/
 
 # ── OS ──────────────────────────────────────────────────────
 .DS_Store

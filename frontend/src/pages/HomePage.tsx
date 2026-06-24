@@ -149,7 +149,7 @@ export function HomePage({ onOpenAuth }: { onOpenAuth: () => void }) {
             >
               <Rocket size={16} className="text-white" />
             </div>
-            <span className="hidden sm:inline">БизнесКонструктор</span>
+            <span className="hidden sm:inline">Конструктор бизнес-планов</span>
           </Link>
 
           <div className="flex items-center gap-3">
@@ -337,7 +337,7 @@ export function HomePage({ onOpenAuth }: { onOpenAuth: () => void }) {
             <div className="flex h-6 w-6 items-center justify-center rounded" style={{ background: "#6366f1" }}>
               <Rocket size={12} className="text-white" />
             </div>
-            <span>БизнесКонструктор</span>
+            <span>Конструктор бизнес-планов</span>
           </div>
           <div className="flex gap-5 text-xs" style={{ color: "#555080" }}>
             <Link to="/privacy" className="transition-colors hover:text-white">Конфиденциальность</Link>

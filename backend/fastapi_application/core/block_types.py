@@ -41,10 +41,10 @@ EXPORT_HTML_STYLES = """
     body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #111827; }
     h1 { font-size: 28px; margin-bottom: 8px; }
     .meta { color: #6b7280; font-size: 14px; margin-bottom: 32px; }
-    .block { margin-bottom: 24px; padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; break-inside: avoid; }
-    .block h3 { margin: 0 0 8px; font-size: 18px; }
-    .block .type { margin: 0; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
-    .block .content { margin-top: 12px; font-size: 14px; color: #374151; line-height: 1.6; }
+    .block { margin-bottom: 24px; break-inside: avoid; }
+    .block h3 { margin: 0 0 4px; font-size: 18px; }
+    .block .type { margin: 0 0 8px; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
+    .block .content { font-size: 14px; color: #374151; line-height: 1.6; }
     .block .content ul { list-style: disc; padding-left: 1.5rem; margin: 0.5em 0; }
     .block .content ol { list-style: decimal; padding-left: 1.5rem; margin: 0.5em 0; }
     .block .content h2, .block .content h3, .block .content h4 { margin: 0.75em 0 0.35em; }

@@ -10,7 +10,7 @@ type VisualSettingsContextType = {
 };
 
 const defaults: VisualSettings = {
-  gridOverlay: true,
+  gridOverlay: false,
 };
 
 const STORAGE_KEY = "visual-settings-v2";
