@@ -46,6 +46,7 @@ export const ChartVisualization = memo(function ChartVisualization({
   const curSym = getCurrencySymbol(curCode);
 
   const categories = useMemo(() => chartData.map((d) => d.date), [chartData]);
+  const dataLen = categories.length;
 
   const series = useMemo(
     () => [
@@ -58,30 +59,41 @@ export const ChartVisualization = memo(function ChartVisualization({
 
   const isSparse = chartData.length > 0 && chartData.length <= 2 && points.length >= 2;
 
+  function getCurrentRange(chart: ApexCharts): { minX: number; maxX: number } {
+    const s = chart.getState();
+    if (typeof s.minX === "number" && typeof s.maxX === "number") {
+      return { minX: s.minX, maxX: s.maxX };
+    }
+    return { minX: 0, maxX: dataLen - 1 };
+  }
+
   const handleZoomIn = useCallback(() => {
     const chart = chartRef.current;
-    if (!chart) return;
-    const s = chart.getState();
-    const center = (s.minX + s.maxX) / 2;
-    const range = s.maxX - s.minX;
+    if (!chart || dataLen < 2) return;
+    const { minX, maxX } = getCurrentRange(chart);
+    const center = (minX + maxX) / 2;
+    const range = maxX - minX;
     if (range < 2) return;
-    const newRange = range * 0.6;
-    chart.zoomX(center - newRange / 2, center + newRange / 2);
-  }, []);
+    const newRange = Math.max(range * 0.6, 1);
+    chart.zoomX(Math.max(center - newRange / 2, 0), Math.min(center + newRange / 2, dataLen - 1));
+  }, [dataLen]);
 
   const handleZoomOut = useCallback(() => {
     const chart = chartRef.current;
-    if (!chart) return;
-    const s = chart.getState();
-    const center = (s.minX + s.maxX) / 2;
-    const range = s.maxX - s.minX;
-    const newRange = range / 0.6;
-    chart.zoomX(center - newRange / 2, center + newRange / 2);
-  }, []);
+    if (!chart || dataLen < 2) return;
+    const { minX, maxX } = getCurrentRange(chart);
+    const center = (minX + maxX) / 2;
+    const range = maxX - minX;
+    const newRange = Math.min(range / 0.6, dataLen - 1);
+    chart.zoomX(Math.max(center - newRange / 2, 0), Math.min(center + newRange / 2, dataLen - 1));
+  }, [dataLen]);
 
   const handleReset = useCallback(() => {
-    chartRef.current?.resetSeries();
-  }, []);
+    const chart = chartRef.current;
+    if (!chart) return;
+    chart.resetSeries();
+    chart.zoomX(0, dataLen - 1);
+  }, [dataLen]);
 
   const options = useMemo<ApexOptions>(
     () => ({
@@ -90,7 +102,8 @@ export const ChartVisualization = memo(function ChartVisualization({
         stacked: false,
         toolbar: { show: false },
         zoom: { enabled: true, type: "x", autoScaleYaxis: true },
-        pan: { enabled: false },
+        pan: { enabled: true, type: "x" },
+        selection: { enabled: false },
         animations: {
           enabled: true,
           easing: "easeinout",
