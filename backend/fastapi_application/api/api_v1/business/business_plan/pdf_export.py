@@ -12,7 +12,21 @@ from .block_serializer import (
 )
 
 _FONT_REGISTERED = False
-_FONT_PATH = r"C:\Windows\Fonts\arial.ttf"
+_FONT_CANDIDATES: list[str] = [
+    r"C:\Windows\Fonts\arial.ttf",
+    r"C:\Windows\Fonts\DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/TTF/DejaVuSans.ttf",
+]
+_BOLD_CANDIDATES: list[str] = [
+    r"C:\Windows\Fonts\arialbd.ttf",
+    r"C:\Windows\Fonts\DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+]
+_FONT_NAME = "ExportFont"
 
 
 def _ensure_font_registered() -> None:
@@ -23,10 +37,14 @@ def _ensure_font_registered() -> None:
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.ttfonts import TTFont
 
-        if os.path.exists(_FONT_PATH):
-            pdfmetrics.registerFont(TTFont("Arial", _FONT_PATH))
-            pdfmetrics.registerFont(TTFont("Arial-Bold", r"C:\Windows\Fonts\arialbd.ttf"))
-            _FONT_REGISTERED = True
+        font_path = next((p for p in _FONT_CANDIDATES if os.path.exists(p)), None)
+        bold_path = next((p for p in _BOLD_CANDIDATES if os.path.exists(p)), None)
+
+        if font_path:
+            pdfmetrics.registerFont(TTFont(_FONT_NAME, font_path))
+        if bold_path:
+            pdfmetrics.registerFont(TTFont(f"{_FONT_NAME}-Bold", bold_path))
+        _FONT_REGISTERED = True
     except Exception:
         pass
 
@@ -50,6 +68,8 @@ def _build_pdf_html(plan: BusinessPlan) -> str:
     desc_esc = html.escape(plan.description or "", quote=True)
     created_esc = html.escape(plan.created_at.strftime("%Y-%m-%d"), quote=True)  # type: ignore[attr-defined]
 
+    font_family = _FONT_NAME if _FONT_REGISTERED else "sans-serif"
+
     return f"""<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -58,7 +78,7 @@ def _build_pdf_html(plan: BusinessPlan) -> str:
 <style>
     {EXPORT_HTML_STYLES}
     @page {{ margin: 20mm 15mm; }}
-    body {{ font-family: Arial, sans-serif; font-size: 12pt; }}
+    body {{ font-family: {font_family}, sans-serif; font-size: 12pt; }}
     h1 {{ font-size: 22pt; }}
     .block h3 {{ font-size: 14pt; }}
     .block .content {{ font-size: 10pt; }}
@@ -73,11 +93,12 @@ def _build_pdf_html(plan: BusinessPlan) -> str:
 
 
 def _override_font_mapping() -> None:
+    font_name = _FONT_NAME if _FONT_REGISTERED else "Helvetica"
     try:
         import xhtml2pdf.default
 
-        xhtml2pdf.default.DEFAULT_FONT["arial"] = "Arial"
-        xhtml2pdf.default.DEFAULT_FONT["sansserif"] = "Arial"
+        xhtml2pdf.default.DEFAULT_FONT[_FONT_NAME.lower()] = font_name
+        xhtml2pdf.default.DEFAULT_FONT["sansserif"] = font_name
     except Exception:
         pass
 

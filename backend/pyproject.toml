@@ -23,6 +23,7 @@ python-multipart = "^0.0.20"
 weasyprint = "^62.0"
 aiobotocore = "^2.15.0"
 icalendar = "^6.0"
+xhtml2pdf = "^0.2.17"
 
 [dependency-groups]
 dev = [

@@ -88,8 +88,9 @@ async def export_plan(
                 ]
             )
         output.seek(0)
+        data = output.getvalue().encode("utf-8-sig")
         return StreamingResponse(
-            io.BytesIO(output.getvalue().encode("utf-8")),
+            io.BytesIO(data),
             media_type="text/csv",
             headers={"Content-Disposition": f"attachment; filename=plan_{plan.id}.csv"},
         )
@@ -108,22 +109,22 @@ async def export_plan(
             bottom=Side(style="thin", color="d1d5db"),
         )
 
-        ws.merge_cells("A1:D1")
+        ws.merge_cells("A1:E1")
         ws["A1"] = plan.title
         ws["A1"].font = Font(bold=True, size=14)
         ws["A1"].alignment = Alignment(horizontal="left")
 
         if plan.description:
-            ws.merge_cells("A2:D2")
+            ws.merge_cells("A2:E2")
             ws["A2"] = plan.description
             ws["A2"].font = Font(size=10, color="6b7280")
 
-        ws.merge_cells("A3:D3")
+        ws.merge_cells("A3:E3")
         ws["A3"] = f"Создан: {plan.created_at.strftime('%Y-%m-%d')}"  # type: ignore[attr-defined]
         ws["A3"].font = Font(size=10, color="9ca3af")
 
         ws.append([])
-        headers = ["Порядок", "Название блока", "Тип блока", "Содержание"]
+        headers = ["Порядок", "Название блока", "Тип блока", "Содержание (текст)", "Содержание (HTML)"]
         ws.append(headers)
         for col_idx, header in enumerate(headers, 1):
             cell = ws.cell(row=ws.max_row, column=col_idx)
@@ -134,15 +135,16 @@ async def export_plan(
 
         for block in sorted(plan.blocks, key=lambda b: b.block_order):
             rc = block.rich_content if isinstance(block.rich_content, dict) else None
-            content = serialize_block_plain(block.block_type, block.content or "", rc)
-            row_data = [block.block_order, block.title, block.block_type, content]
+            plain = serialize_block_plain(block.block_type, block.content or "", rc)
+            html_content = serialize_block_html(block.block_type, block.content or "", rc)
+            row_data = [block.block_order, block.title, block.block_type, plain, html_content]
             ws.append(row_data)
-            for col_idx in range(1, 5):
+            for col_idx in range(1, 6):
                 cell = ws.cell(row=ws.max_row, column=col_idx)
                 cell.border = thin_border
                 cell.alignment = Alignment(vertical="top", wrap_text=True)
 
-        for col_idx in range(1, 5):
+        for col_idx in range(1, 6):
             max_len = 0
             from openpyxl.utils import get_column_letter
 

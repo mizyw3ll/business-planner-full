@@ -20,6 +20,7 @@ class S3Storage:
         access_key: str,
         secret_key: str,
         region: str = "ru-central-1",
+        fallback: LocalStorage | None = None,
     ) -> None:
         self.endpoint_url = endpoint_url
         self.bucket = bucket
@@ -29,6 +30,7 @@ class S3Storage:
             "aws_access_key_id": access_key,
             "aws_secret_access_key": secret_key,
         }
+        self._fallback = fallback
 
     def _client(self):
         return self._session.create_client(
@@ -39,20 +41,33 @@ class S3Storage:
         )
 
     async def put_object(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> None:
-        async with self._client() as client:
-            await client.put_object(
-                Bucket=self.bucket,
-                Key=key,
-                Body=data,
-                ContentType=content_type,
-            )
+        try:
+            async with self._client() as client:
+                await client.put_object(
+                    Bucket=self.bucket,
+                    Key=key,
+                    Body=data,
+                    ContentType=content_type,
+                )
+        except Exception as exc:
+            if self._fallback:
+                await self._fallback.put_object(key, data, content_type)
+            else:
+                raise
 
     async def get_object(self, key: str) -> tuple[bytes, str]:
         async with self._client() as client:
             try:
                 response = await client.get_object(Bucket=self.bucket, Key=key)
             except Exception as exc:
-                if exc.response.get("Error", {}).get("Code") in ("NoSuchKey", "404"):
+                is_not_found = False
+                try:
+                    is_not_found = exc.response.get("Error", {}).get("Code") in ("NoSuchKey", "404")
+                except Exception:
+                    pass
+                if is_not_found or self._fallback:
+                    if self._fallback:
+                        return await self._fallback.get_object(key)
                     raise FileNotFoundError(f"Not found: {key}") from exc
                 raise
             body: StreamingBody = response["Body"]
@@ -65,7 +80,8 @@ class S3Storage:
             try:
                 await client.delete_object(Bucket=self.bucket, Key=key)
             except Exception:
-                pass
+                if self._fallback:
+                    await self._fallback.delete_object(key)
 
     async def head_object(self, key: str) -> dict | None:
         async with self._client() as client:
@@ -138,6 +154,11 @@ class LocalStorage:
 def create_storage() -> S3Storage | LocalStorage:
     from core.config import settings
 
+    from pathlib import Path
+
+    uploads_root = Path(__file__).resolve().parents[1] / "uploads"
+    local = LocalStorage(str(uploads_root))
+
     if settings.s3.enabled and settings.s3.bucket:
         return S3Storage(
             endpoint_url=settings.s3.endpoint_url,
@@ -145,11 +166,9 @@ def create_storage() -> S3Storage | LocalStorage:
             access_key=settings.s3.access_key,
             secret_key=settings.s3.secret_key,
             region=settings.s3.region,
+            fallback=local,
         )
-    from pathlib import Path
-
-    uploads_root = Path(__file__).resolve().parents[1] / "uploads"
-    return LocalStorage(str(uploads_root))
+    return local
 
 
 storage = create_storage()

@@ -162,8 +162,9 @@ async def export_chart(
         writer.writerow(["Total Expense", "", str(total_expense), ""])
         writer.writerow(["Net", "", str(total_income - total_expense), ""])
         output.seek(0)
+        data = output.getvalue().encode("utf-8-sig")
         return StreamingResponse(
-            io.BytesIO(output.getvalue().encode("utf-8")),
+            io.BytesIO(data),
             media_type="text/csv",
             headers={"Content-Disposition": f"attachment; filename=chart_{chart.id}.csv"},
         )
@@ -226,9 +227,11 @@ async def export_chart(
             for col_idx in range(1, 5):
                 ws.cell(row=ws.max_row, column=col_idx).border = thin_border
 
+        from openpyxl.utils import get_column_letter
+
         for col_idx in range(1, 5):
             max_len = 0
-            col_letter = ws.cell(row=1, column=col_idx).column_letter
+            col_letter = get_column_letter(col_idx)
             for row in ws.iter_rows(min_col=col_idx, max_col=col_idx, values_only=True):
                 val = str(row[0] or "")
                 max_len = max(max_len, len(val))
