@@ -3,7 +3,6 @@ import { Link, Navigate, useLocation } from "react-router-dom";
 import {
   Rocket,
   ArrowRight,
-  Play,
   BarChart3,
   Calendar,
   LayoutGrid,
@@ -42,7 +41,7 @@ const steps = [
   { num: "01", title: "Регистрация", desc: "Аккаунт за 30 секунд. Только email и пароль." },
   { num: "02", title: "Настройка", desc: "Определите тип бизнеса и цели." },
   { num: "03", title: "Генерация", desc: "ИИ создаст структуру и рассчитает финансы." },
-  { num: "04", title: "Запуск", desc: "Экспорт в PDF,-sharing с партнёрами." },
+  { num: "04", title: "Запуск", desc: "Экспорт в PDF, sharing с партнёрами." },
 ];
 
 function useInView(ref: React.RefObject<HTMLElement | null>, threshold = 0.1) {
@@ -122,25 +121,19 @@ export function HomePage({ onOpenAuth }: { onOpenAuth: () => void }) {
   if (user) return <Navigate to={from || "/dashboard"} replace />;
 
   return (
-    <main className="relative min-h-screen overflow-hidden" style={{ background: "rgba(12, 10, 26, 0.85)" }}>
+    <main className="relative min-h-screen overflow-hidden" style={{ background: "#0a0a14" }}>
       {/* Subtle background */}
       <div className="pointer-events-none fixed inset-0 z-0" aria-hidden="true">
         <div
           className="absolute inset-0"
           style={{
-            background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(99,102,241,0.08) 0%, transparent 60%)",
-          }}
-        />
-        <div
-          className="absolute inset-0"
-          style={{
-            background: "radial-gradient(ellipse 60% 40% at 80% 100%, rgba(16,185,129,0.05) 0%, transparent 50%)",
+            background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(99,102,241,0.06) 0%, transparent 60%)",
           }}
         />
       </div>
 
       {/* Navbar */}
-      <nav className="fixed left-0 right-0 top-0 z-50" style={{ background: "rgba(12,10,26,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+      <nav className="fixed left-0 right-0 top-0 z-50" style={{ background: "rgba(10,10,20,0.9)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <Link to="/" className="flex items-center gap-2.5 text-sm font-semibold text-white">
             <div
@@ -179,47 +172,38 @@ export function HomePage({ onOpenAuth }: { onOpenAuth: () => void }) {
       </nav>
 
       {/* Hero */}
-      <section className="relative flex min-h-screen flex-col items-center justify-center px-6 pt-20 pb-16">
+      <section className="relative flex min-h-[90vh] flex-col items-center justify-center px-6 pt-24 pb-16 md:pb-[60px] pb-[30px]">
         <div className="animate-fade-in max-w-3xl text-center">
           <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-white md:text-6xl lg:text-7xl">
             Бизнес-планы
             <br />
             <span style={{ color: "#818cf8" }}>с ИИ-помощником</span>
           </h1>
-          <p className="mx-auto mb-10 max-w-xl text-base leading-relaxed md:text-lg" style={{ color: "#9892b5" }}>
+          <p className="mx-auto mb-10 max-w-xl text-base leading-relaxed md:text-lg" style={{ color: "#8b85b0 }}">
             Платформа для создания бизнес-планов, финансового моделирования и управления задачами.
-            ИИ помогает на каждом шаге.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
               onClick={onOpenAuth}
               className="group rounded-xl px-7 py-3.5 text-sm font-semibold text-white transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.97]"
-              style={{ background: "#6366f1", boxShadow: "0 4px 20px rgba(99,102,241,0.3)" }}
+              style={{ background: "#6366f1", boxShadow: "0 4px 24px rgba(99,102,241,0.35)" }}
             >
               <span className="flex items-center gap-2">
                 Начать бесплатно
                 <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
               </span>
             </button>
-            <a
-              href="#features"
-              className="flex items-center gap-2 rounded-xl px-7 py-3.5 text-sm font-medium text-gray-300 transition-all hover:text-white"
-              style={{ border: "1px solid rgba(255,255,255,0.1)" }}
-            >
-              <Play size={16} />
-              Обзор возможностей
-            </a>
           </div>
         </div>
       </section>
 
       {/* Features */}
-      <section id="features" className="relative py-20 px-6">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-12 text-center">
+      <section id="features" className="relative md:pb-[60px] pb-[30px] px-6">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-10 md:mb-12 text-center">
             <h2 className="mb-3 text-2xl font-bold text-white md:text-4xl">Всё что нужно</h2>
-            <p style={{ color: "#7a749e" }}>Четыре инструмента в одной платформе</p>
+            <p style={{ color: "#6b6590" }}>Четыре инструмента в одной платформе</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {features.map((f, i) => (
@@ -239,7 +223,7 @@ export function HomePage({ onOpenAuth }: { onOpenAuth: () => void }) {
                   <f.icon size={22} style={{ color: f.color }} />
                 </div>
                 <h3 className="mb-2 text-base font-semibold text-white">{f.title}</h3>
-                <p className="text-sm leading-relaxed" style={{ color: "#8b85a8" }}>{f.desc}</p>
+                <p className="text-sm leading-relaxed" style={{ color: "#7a749e" }}>{f.desc}</p>
               </div>
             ))}
           </div>
@@ -247,7 +231,7 @@ export function HomePage({ onOpenAuth }: { onOpenAuth: () => void }) {
       </section>
 
       {/* Stats */}
-      <section ref={statsRef} className="relative py-20 px-6">
+      <section ref={statsRef} className="relative md:pb-[60px] pb-[30px] px-6">
         <div className="mx-auto max-w-3xl">
           <div
             className="grid grid-cols-2 gap-6"
@@ -274,11 +258,11 @@ export function HomePage({ onOpenAuth }: { onOpenAuth: () => void }) {
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" ref={stepsRef} className="relative py-20 px-6">
+      <section id="how-it-works" ref={stepsRef} className="relative md:pb-[60px] pb-[30px] px-6">
         <div className="mx-auto max-w-4xl">
-          <div className="mb-12 text-center">
+          <div className="mb-10 md:mb-12 text-center">
             <h2 className="mb-3 text-2xl font-bold text-white md:text-4xl">Как это работает</h2>
-            <p style={{ color: "#7a749e" }}>Четыре шага от регистрации до готового плана</p>
+            <p style={{ color: "#6b6590" }}>Четыре шага от регистрации до готового плана</p>
           </div>
           <div className="grid gap-4 md:grid-cols-4">
             {steps.map((step, i) => (
@@ -295,7 +279,7 @@ export function HomePage({ onOpenAuth }: { onOpenAuth: () => void }) {
                     {step.num}
                   </div>
                   <h3 className="mb-1.5 text-sm font-semibold text-white">{step.title}</h3>
-                  <p className="text-xs leading-relaxed" style={{ color: "#8b85a8" }}>{step.desc}</p>
+                  <p className="text-xs leading-relaxed" style={{ color: "#7a749e" }}>{step.desc}</p>
                 </div>
               </div>
             ))}
@@ -304,7 +288,7 @@ export function HomePage({ onOpenAuth }: { onOpenAuth: () => void }) {
       </section>
 
       {/* CTA */}
-      <section ref={ctaRef} className="relative py-20 px-6">
+      <section ref={ctaRef} className="relative md:pb-[60px] pb-[30px] px-6">
         <div className="mx-auto max-w-2xl text-center">
           <div
             style={{
@@ -314,24 +298,24 @@ export function HomePage({ onOpenAuth }: { onOpenAuth: () => void }) {
             }}
           >
             <h2 className="mb-3 text-2xl font-bold text-white md:text-4xl">Готовы начать?</h2>
-            <p className="mx-auto mb-8 max-w-md" style={{ color: "#9892b5" }}>
-              Присоединяйтесь к предпринимателям, которые уже создают бизнес-планы с помощью ИИ
+            <p className="mx-auto mb-8 max-w-md" style={{ color: "#8b85b0" }}>
+              Присоединяйтесь к предпринимателям, которые уже создают бизнес-планы
             </p>
             <button
               type="button"
               onClick={onOpenAuth}
               className="rounded-xl px-8 py-3.5 text-sm font-semibold text-white transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.97]"
-              style={{ background: "#6366f1", boxShadow: "0 4px 20px rgba(99,102,241,0.3)" }}
+              style={{ background: "#6366f1", boxShadow: "0 4px 24px rgba(99,102,241,0.35)" }}
             >
               Создать аккаунт бесплатно
             </button>
-            <p className="mt-3 text-xs" style={{ color: "#555080" }}>Без кредитной карты</p>
+            <p className="mt-3 text-xs" style={{ color: "#4a4570" }}>Без кредитной карты</p>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="relative px-6 py-8" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      <footer className="relative px-6 md:pb-[60px] pb-[30px] pt-8" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 md:flex-row">
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <div className="flex h-6 w-6 items-center justify-center rounded" style={{ background: "#6366f1" }}>
