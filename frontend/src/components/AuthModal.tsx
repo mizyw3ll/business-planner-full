@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react";
-import { Eye, EyeOff, X, ArrowLeft, Mail, Lock, User, Check, Loader2 } from "lucide-react";
+import { Eye, EyeOff, X, ArrowLeft, Mail, Lock, User, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuth } from "../features/auth/AuthContext";
@@ -15,23 +15,6 @@ type AuthModalProps = {
   isOpen: boolean;
   onClose: () => void;
 };
-
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const usernameRegex = /^[A-Za-z0-9_]{5,20}$/;
-
-function passwordStrength(password: string) {
-  const checks = [
-    password.length >= 8,
-    /[A-Z]/.test(password),
-    /[a-z]/.test(password),
-    /\d/.test(password),
-    /[^A-Za-z0-9]/.test(password),
-  ];
-  const score = checks.filter(Boolean).length;
-  if (score <= 2) return { label: "Слабый", color: "#ef4444", width: "33%", score };
-  if (score <= 4) return { label: "Средний", color: "#f59e0b", width: "66%", score };
-  return { label: "Сильный", color: "#10b981", width: "100%", score };
-}
 
 function AuthInput({
   icon: Icon,
@@ -65,7 +48,7 @@ function AuthInput({
   return (
     <div>
       <label className="text-xs font-medium block mb-1" style={{ color: v("text-muted") }}>{label}</label>
-      <div className="relative flex items-center rounded-xl border" style={inputStyle(isDark)}>
+      <div className="relative flex items-center rounded-xl border" style={error ? { borderColor: "#ef4444", background: v("bg-input") } : inputStyle(isDark)}>
         <div className="pl-3" style={{ color: error ? "#ef4444" : isValid ? "#10b981" : v("text-muted") }}>
           <Icon size={16} />
         </div>
@@ -86,23 +69,6 @@ function AuthInput({
         {rightElement && <div className="pr-2">{rightElement}</div>}
       </div>
       {error && <p className="mt-1 text-xs" style={{ color: "#ef4444" }}>{error}</p>}
-    </div>
-  );
-}
-
-function PasswordStrengthBar({ password }: { password: string }) {
-  const strength = passwordStrength(password);
-  if (!password) return null;
-
-  return (
-    <div className="mt-1.5 space-y-1">
-      <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-        <div
-          className="h-full rounded-full transition-all duration-300"
-          style={{ width: strength.width, background: strength.color }}
-        />
-      </div>
-      <p className="text-[11px]" style={{ color: strength.color }}>{strength.label}</p>
     </div>
   );
 }
@@ -161,26 +127,16 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const loginErrors = useMemo(() => {
     const errors: Record<string, string> = {};
-    if (!loginForm.login.trim()) errors.login = "Введите email или username";
-    else if (loginForm.login.includes("@")) {
-      if (!emailRegex.test(loginForm.login)) errors.login = "Некорректный email";
-    } else if (!usernameRegex.test(loginForm.login)) errors.login = "Username: 5-20 символов, латиница, цифры, _";
-    if (!loginForm.password) errors.password = "Введите пароль";
+    if (!loginForm.login.trim()) errors.login = "Поле не заполнено";
+    if (!loginForm.password) errors.password = "Поле не заполнено";
     return errors;
   }, [loginForm]);
 
   const regErrors = useMemo(() => {
     const errors: Record<string, string> = {};
-    if (!emailRegex.test(regForm.email)) errors.email = "Введите корректный email";
-    if (!usernameRegex.test(regForm.username)) errors.username = "Username: 5-20 символов, латиница, цифры, _";
-    const passChecks = [
-      regForm.password.length >= 8,
-      /[A-Z]/.test(regForm.password),
-      /[a-z]/.test(regForm.password),
-      /\d/.test(regForm.password),
-      /[^A-Za-z0-9]/.test(regForm.password),
-    ];
-    if (!passChecks.every(Boolean)) errors.password = "Минимум 8 символов: заглавная, строчная, цифра, спецсимвол";
+    if (!regForm.email.trim()) errors.email = "Поле не заполнено";
+    if (!regForm.username.trim()) errors.username = "Поле не заполнено";
+    if (!regForm.password) errors.password = "Поле не заполнено";
     if (regForm.confirm !== regForm.password) errors.confirm = "Пароли не совпадают";
     return errors;
   }, [regForm]);
@@ -230,8 +186,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   async function handleForgot(e: React.FormEvent) {
     e.preventDefault();
-    if (!emailRegex.test(forgotEmail)) {
-      toast.error("Введите корректный email");
+    if (!forgotEmail.trim()) {
+      toast.error("Поле не заполнено");
       return;
     }
     try {
@@ -397,7 +353,6 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   </button>
                 }
               />
-              <PasswordStrengthBar password={regForm.password} />
             </div>
             <AuthInput
               icon={Lock}
