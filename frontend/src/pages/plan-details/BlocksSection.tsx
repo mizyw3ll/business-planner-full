@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useState, useCallback, useRef } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -6,7 +6,9 @@ import {
   closestCenter,
   useSensor,
   useSensors,
+  DragOverlay,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import {
@@ -20,11 +22,10 @@ import { tw, v } from "../../shared/theme";
 interface BlocksSectionProps {
   blocks: PlanBlock[];
   isDark: boolean;
-  aiGeneratingPlan: boolean;
   financialCharts: FinancialPlan[];
   onDragEnd: (event: DragEndEvent) => void;
   onCreateBlock: () => void;
-  onToggleAI: () => void;
+  onGenerateOutline: () => void;
   onEditBlock: (block: PlanBlock) => void;
   onDeleteBlock: (block: PlanBlock) => void;
   onCommentsBlock: (block: PlanBlock) => void;
@@ -34,11 +35,10 @@ interface BlocksSectionProps {
 export const BlocksSection = memo(function BlocksSection({
   blocks,
   isDark,
-  aiGeneratingPlan,
   financialCharts,
   onDragEnd,
   onCreateBlock,
-  onToggleAI,
+  onGenerateOutline,
   onEditBlock,
   onDeleteBlock,
   onCommentsBlock,
@@ -49,6 +49,28 @@ export const BlocksSection = memo(function BlocksSection({
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 10 } }),
   );
   const { chartPointsById, chartPointsLoading } = useChartEmbedPoints(blocks);
+  const [activeBlock, setActiveBlock] = useState<PlanBlock | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [overlayWidth, setOverlayWidth] = useState(0);
+
+  const handleDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const block = blocks.find((b) => b.id === event.active.id);
+      setActiveBlock(block ?? null);
+      if (containerRef.current) {
+        setOverlayWidth(containerRef.current.offsetWidth);
+      }
+    },
+    [blocks],
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setActiveBlock(null);
+      onDragEnd(event);
+    },
+    [onDragEnd],
+  );
 
   return (
     <article className="space-y-3">
@@ -60,20 +82,15 @@ export const BlocksSection = memo(function BlocksSection({
           <button
             className="rounded-lg border px-3 py-2 text-sm transition-colors"
             style={{
-              borderColor: aiGeneratingPlan ? "rgba(220, 38, 38, 0.5)" : v("border-secondary"),
-              color: aiGeneratingPlan ? "rgb(252, 165, 165)" : v("text-secondary"),
-              background: aiGeneratingPlan ? "rgba(220, 38, 38, 0.1)" : "transparent",
+              borderColor: v("border-secondary"),
+              color: v("text-secondary"),
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = aiGeneratingPlan ? "rgba(220, 38, 38, 0.2)" : v("bg-hover");
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = aiGeneratingPlan ? "rgba(220, 38, 38, 0.1)" : "transparent";
-            }}
-            onClick={onToggleAI}
+            onMouseEnter={(e) => { e.currentTarget.style.background = v("bg-hover"); }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            onClick={onGenerateOutline}
           >
-            <span className="sm:hidden">{aiGeneratingPlan ? "■" : "AI"}</span>
-            <span className="hidden sm:inline">{aiGeneratingPlan ? "■ Стоп" : "AI: структура"}</span>
+            <span className="sm:hidden">AI</span>
+            <span className="hidden sm:inline">AI: структура</span>
           </button>
           <button className={tw.buttonPrimary} onClick={onCreateBlock}>
             <span className="sm:hidden">+</span>
@@ -96,9 +113,15 @@ export const BlocksSection = memo(function BlocksSection({
           </div>
         </div>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => setActiveBlock(null)}
+        >
           <SortableContext items={blocks.map((block) => block.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-2">
+            <div className="space-y-2" ref={containerRef}>
               {blocks.map((block) => (
                 <SortableBlock
                   key={block.id}
@@ -115,6 +138,24 @@ export const BlocksSection = memo(function BlocksSection({
               ))}
             </div>
           </SortableContext>
+          <DragOverlay>
+            {activeBlock ? (
+              <div style={{ width: overlayWidth > 0 ? overlayWidth : undefined }}>
+                <SortableBlock
+                  block={activeBlock}
+                  isDark={isDark}
+                  financialCharts={financialCharts}
+                  chartPointsById={chartPointsById}
+                  chartPointsLoading={chartPointsLoading}
+                  onEdit={() => {}}
+                  onDelete={() => {}}
+                  onComments={() => {}}
+                  onDuplicate={() => {}}
+                  hideActions
+                />
+              </div>
+            ) : null}
+          </DragOverlay>
         </DndContext>
       )}
     </article>

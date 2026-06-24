@@ -5,6 +5,7 @@ import { ProtectedLayout } from "./components/ProtectedLayout";
 import { BackgroundEffects } from "./components/BackgroundEffects";
 import { CookieConsent } from "./components/CookieConsent";
 import { VisualSettingsProvider } from "./features/settings/VisualSettingsContext";
+import { AiProvider } from "./features/ai/AiContext";
 import { PageLoader } from "./components/PageLoader";
 
 // Lazy-loaded pages
@@ -37,6 +38,7 @@ function App() {
 
   return (
     <VisualSettingsProvider>
+      <AiProvider>
       <BackgroundEffects />
       <Routes>
         <Route path="/" element={
@@ -139,6 +141,7 @@ function App() {
           <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
         )}
       </Suspense>
+      </AiProvider>
       <CookieConsent />
       <Toaster
         position="top-right"

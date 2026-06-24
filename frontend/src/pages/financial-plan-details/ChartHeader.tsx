@@ -22,16 +22,12 @@ interface ChartHeaderProps {
     is_active: boolean;
   };
   currencies: Currency[];
-  aiSummaryLoading: boolean;
-  aiSummary: string | null;
   onFormChange: (field: string, value: string | number | boolean | object | null) => void;
   onStartEdit: () => void;
   onSave: () => void;
   onCancelEdit: () => void;
   onDelete: () => void;
-  onToggleAI: () => void;
-  onCopySummary: () => void;
-  onInsertSummaryToDescription: () => void;
+  onGenerateSummary: () => void;
 }
 
 export const ChartHeader = memo(function ChartHeader({
@@ -40,16 +36,12 @@ export const ChartHeader = memo(function ChartHeader({
   isEditing,
   chartForm,
   currencies,
-  aiSummaryLoading,
-  aiSummary,
   onFormChange,
   onStartEdit,
   onSave,
   onCancelEdit,
   onDelete,
-  onToggleAI,
-  onCopySummary,
-  onInsertSummaryToDescription,
+  onGenerateSummary,
 }: ChartHeaderProps) {
   return (
     <article
@@ -74,15 +66,14 @@ export const ChartHeader = memo(function ChartHeader({
             <button
               className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors"
               style={{
-                borderColor: aiSummaryLoading ? "rgba(220, 38, 38, 0.5)" : v("border-secondary"),
-                color: aiSummaryLoading ? "rgb(252, 165, 165)" : v("text-secondary"),
-                background: aiSummaryLoading ? "rgba(220, 38, 38, 0.1)" : "transparent",
+                borderColor: v("border-secondary"),
+                color: v("text-secondary"),
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = aiSummaryLoading ? "rgba(220, 38, 38, 0.2)" : v("bg-hover"); }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = aiSummaryLoading ? "rgba(220, 38, 38, 0.1)" : "transparent"; }}
-              onClick={onToggleAI}
+              onMouseEnter={(e) => { e.currentTarget.style.background = v("bg-hover"); }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              onClick={onGenerateSummary}
             >
-              {aiSummaryLoading ? "■ Стоп" : "AI: сводка"}
+              AI: сводка
             </button>
             {isEditing ? (
               <>
@@ -177,39 +168,7 @@ export const ChartHeader = memo(function ChartHeader({
           </>
         )}
 
-        {aiSummary && (
-          <div
-            className="rounded-xl border p-4"
-            style={{ borderColor: v("border-primary"), background: v("bg-card") }}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold" style={{ color: v("text-primary") }}>AI-сводка</h3>
-              <div className="flex gap-2">
-                <button
-                  className="rounded-lg border px-3 py-1.5 text-xs transition-colors"
-                  style={{ borderColor: v("border-secondary"), color: v("text-secondary") }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = v("bg-hover"); }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                  onClick={onCopySummary}
-                >
-                  Копировать
-                </button>
-                <button
-                  className="rounded-lg border px-3 py-1.5 text-xs transition-colors"
-                  style={buttonStyle("primary", isDark)}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = v("bg-hover"); }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                  onClick={onInsertSummaryToDescription}
-                >
-                  Вставить в описание
-                </button>
-              </div>
-            </div>
-            <div className="mt-3">
-              <MarkdownPreview content={aiSummary} />
-            </div>
-          </div>
-        )}
+
       </div>
     </article>
   );

@@ -48,7 +48,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { queryKeys } from "../lib/queryClient";
 import { BlockModal } from "../components/BlockModal";
-import { AIPreviewModal } from "../components/AIPreviewModal";
 import { useFinancialPlansQuery } from "../hooks/useCachedData";
 import { v } from "../shared/theme";
 import { useTheme } from "../features/theme/ThemeContext";
@@ -57,6 +56,7 @@ import { textToTiptapDoc } from "../lib/textToTiptap";
 import { tiptapToText } from "../lib/tiptapToText";
 import { ru } from "../i18n/ru";
 import { useModalRegistration } from "../hooks/useModalOpen";
+import { useAi } from "../features/ai/AiContext";
 import { PlanHeader } from "./plan-details/PlanHeader";
 import { AnalyticsGrid } from "./plan-details/AnalyticsGrid";
 import { BlocksSection } from "./plan-details/BlocksSection";
@@ -118,20 +118,6 @@ export function BusinessPlanDetailsPage() {
     tags: [],
     due_date: null,
   });
-  const [aiGeneratingPlan, setAiGeneratingPlan] = useState(false);
-  const [aiImprovingBlock, setAiImprovingBlock] = useState(false);
-
-  const [aiPreviewOpen, setAiPreviewOpen] = useState(false);
-  const [aiPreviewTitle, setAiPreviewTitle] = useState("");
-  const [aiPreviewContent, setAiPreviewContent] = useState("");
-  const [aiPreviewCharCount, setAiPreviewCharCount] = useState(0);
-  const [aiPreviewMaxChars, setAiPreviewMaxChars] = useState(5000);
-  const [aiPreviewProvider, setAiPreviewProvider] = useState("");
-  const [aiPreviewModel, setAiPreviewModel] = useState("");
-  const [aiPreviewSaving, setAiPreviewSaving] = useState(false);
-  const [aiPreviewMode, setAiPreviewMode] = useState<"generate" | "improve">("generate");
-  const aiAbortRef = useRef<AbortController | null>(null);
-
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
   useModalRegistration(snapshotsOpen);
   const [snapshots, setSnapshots] = useState<
@@ -151,6 +137,7 @@ export function BusinessPlanDetailsPage() {
   const [editingCommentText, setEditingCommentText] = useState("");
 
   const isEditingBlock = editingBlockId !== null;
+  const ai = useAi();
   const { data: financialPlansList = [] } = useFinancialPlansQuery();
   const financialCharts = useMemo(() => financialPlansList.filter((c) => c.is_active), [financialPlansList]);
 
@@ -215,29 +202,24 @@ export function BusinessPlanDetailsPage() {
     setBlockModalOpen(true);
   }
 
-  async function generatePlanOutlineWithAI() {
+  function handleGenerateOutline() {
     if (!planId) return;
-    const controller = new AbortController();
-    aiAbortRef.current = controller;
-    try {
-      setAiGeneratingPlan(true);
-      const result = await generateBusinessPlanOutlineApi(planId, controller.signal);
-      setAiPreviewTitle("AI-структура плана");
-      setAiPreviewContent(result.content);
-      setAiPreviewCharCount(result.char_count);
-      setAiPreviewMaxChars(result.max_chars);
-      setAiPreviewProvider(result.provider);
-      setAiPreviewModel(result.model);
-      setAiPreviewMode("generate");
-      setAiPreviewOpen(true);
-    } catch (err: any) {
-      if (err?.name !== "CanceledError" && err?.code !== "ERR_CANCELED") {
-        toast.error(err?.userMessage || "Не удалось сгенерировать структуру");
-      }
-    } finally {
-      setAiGeneratingPlan(false);
-      aiAbortRef.current = null;
-    }
+    const promise = generateBusinessPlanOutlineApi(planId);
+    ai.startTask(promise, {
+      title: "AI-структура плана",
+      onSave: async (content) => {
+        await createPlanBlockApi(planId, {
+          title: "AI-структура плана",
+          content: "",
+          block_type: "markdown",
+          rich_content: { markdown: content },
+          media_attachments: [],
+          tags: [],
+          linked_financial_chart_ids: [],
+        });
+        await refreshBlocks();
+      },
+    });
   }
 
   async function saveBlock() {
@@ -309,38 +291,44 @@ export function BusinessPlanDetailsPage() {
     setBlockModalOpen(true);
   }
 
-  async function handleImproveBlockWithAI() {
+  function handleImproveBlockWithAI() {
     if (!planId || editingBlockId === null) return;
-    const controller = new AbortController();
-    aiAbortRef.current = controller;
-    try {
-      setAiImprovingBlock(true);
-      await updatePlanBlockApi(planId, editingBlockId, {
-        title: blockForm.title.trim(),
-        content: blockForm.content.trim(),
-        block_type: blockForm.block_type,
-        rich_content: blockForm.rich_content,
-        media_attachments: blockForm.media_attachments,
-        linked_financial_chart_ids: blockForm.linked_financial_chart_ids,
-        due_date: blockForm.due_date,
-      });
-      const result = await improveBusinessPlanBlockApi(planId, editingBlockId, controller.signal);
-      setAiPreviewTitle("Улучшение блока");
-      setAiPreviewContent(result.content);
-      setAiPreviewCharCount(result.char_count);
-      setAiPreviewMaxChars(result.max_chars);
-      setAiPreviewProvider(result.provider);
-      setAiPreviewModel(result.model);
-      setAiPreviewMode("improve");
-      setAiPreviewOpen(true);
-    } catch (err: any) {
-      if (err?.name !== "CanceledError" && err?.code !== "ERR_CANCELED") {
-        toast.error(err?.userMessage || "Не удалось улучшить текст");
-      }
-    } finally {
-      setAiImprovingBlock(false);
-      aiAbortRef.current = null;
-    }
+    const currentBlockForm = {
+      title: blockForm.title.trim(),
+      content: blockForm.content.trim(),
+      block_type: blockForm.block_type,
+      rich_content: blockForm.rich_content,
+      media_attachments: blockForm.media_attachments,
+      linked_financial_chart_ids: blockForm.linked_financial_chart_ids,
+      due_date: blockForm.due_date,
+    };
+    const blockType = blockForm.block_type;
+    const promise = (async () => {
+      await updatePlanBlockApi(planId, editingBlockId, currentBlockForm);
+      return await improveBusinessPlanBlockApi(planId, editingBlockId);
+    })();
+    ai.startTask(promise, {
+      title: "Улучшение блока",
+      onSave: async (content) => {
+        if (blockType === "markdown") {
+          await updatePlanBlockApi(planId, editingBlockId, {
+            ...currentBlockForm,
+            rich_content: { markdown: content },
+          });
+        } else if (["general", "financial", "marketing", "operations"].includes(blockType)) {
+          await updatePlanBlockApi(planId, editingBlockId, {
+            ...currentBlockForm,
+            rich_content: textToTiptapDoc(content),
+          });
+        } else {
+          await updatePlanBlockApi(planId, editingBlockId, {
+            ...currentBlockForm,
+            content: content,
+          });
+        }
+        await refreshBlocks();
+      },
+    });
   }
 
   function handleCancelBlockEdit() {
@@ -356,78 +344,6 @@ export function BusinessPlanDetailsPage() {
       tags: [],
       due_date: null,
     });
-  }
-
-  async function handleAIPreviewSave(content: string) {
-    if (aiPreviewMode === "generate") {
-      setEditingBlockId(null);
-      setBlockForm({
-        title: "AI-структура плана",
-        content: "",
-        block_type: "markdown",
-        rich_content: { markdown: content },
-        media_attachments: [],
-        tags: [],
-        due_date: null,
-        linked_financial_chart_ids: [],
-      });
-      setAiPreviewOpen(false);
-      setBlockModalOpen(true);
-      toast.success("AI-структура создана");
-    } else if (aiPreviewMode === "improve" && planId && editingBlockId !== null) {
-      try {
-        setAiPreviewSaving(true);
-        if (blockForm.block_type === "markdown") {
-          await updatePlanBlockApi(planId, editingBlockId, {
-            title: blockForm.title.trim(),
-            content: blockForm.content.trim(),
-            block_type: blockForm.block_type,
-            rich_content: { markdown: content },
-            media_attachments: blockForm.media_attachments,
-            linked_financial_chart_ids: blockForm.linked_financial_chart_ids,
-            due_date: blockForm.due_date,
-          });
-        } else if (["general", "financial", "marketing", "operations"].includes(blockForm.block_type)) {
-          await updatePlanBlockApi(planId, editingBlockId, {
-            title: blockForm.title.trim(),
-            content: blockForm.content.trim(),
-            block_type: blockForm.block_type,
-            rich_content: textToTiptapDoc(content),
-            media_attachments: blockForm.media_attachments,
-            linked_financial_chart_ids: blockForm.linked_financial_chart_ids,
-            due_date: blockForm.due_date,
-          });
-        } else {
-          await updatePlanBlockApi(planId, editingBlockId, {
-            title: blockForm.title.trim(),
-            content: content,
-            block_type: blockForm.block_type,
-            rich_content: blockForm.rich_content,
-            media_attachments: blockForm.media_attachments,
-            linked_financial_chart_ids: blockForm.linked_financial_chart_ids,
-            due_date: blockForm.due_date,
-          });
-        }
-        if (blockForm.block_type === "markdown") {
-          setBlockForm((prev) => ({ ...prev, rich_content: { markdown: content } }));
-        } else if (["general", "financial", "marketing", "operations"].includes(blockForm.block_type)) {
-          setBlockForm((prev) => ({ ...prev, rich_content: textToTiptapDoc(content) }));
-        } else {
-          setBlockForm((prev) => ({ ...prev, content }));
-        }
-        setAiPreviewOpen(false);
-        toast.success("Текст улучшен с помощью AI");
-        await refreshBlocks();
-      } catch (err: any) {
-        toast.error(err?.userMessage || "Не удалось сохранить улучшенный текст");
-      } finally {
-        setAiPreviewSaving(false);
-      }
-    }
-  }
-
-  function handleAIPreviewCancel() {
-    setAiPreviewOpen(false);
   }
 
   async function onDragEnd(event: DragEndEvent) {
@@ -671,17 +587,10 @@ export function BusinessPlanDetailsPage() {
       <BlocksSection
         blocks={blocks}
         isDark={isDark}
-        aiGeneratingPlan={aiGeneratingPlan}
         financialCharts={financialCharts}
         onDragEnd={onDragEnd}
         onCreateBlock={openCreateBlockModal}
-        onToggleAI={() => {
-          if (aiGeneratingPlan) {
-            aiAbortRef.current?.abort();
-          } else {
-            void generatePlanOutlineWithAI();
-          }
-        }}
+        onGenerateOutline={handleGenerateOutline}
         onEditBlock={handleEditBlock}
         onDeleteBlock={(item) => setDeleteTarget({ type: "block", id: item.id, title: item.title })}
         onCommentsBlock={(item) => { setCommentBlockId(item.id); void loadComments(item.id); }}
@@ -709,21 +618,6 @@ export function BusinessPlanDetailsPage() {
         onSave={saveBlock}
         onCancel={handleCancelBlockEdit}
         onImproveWithAI={editingBlockId !== null ? handleImproveBlockWithAI : undefined}
-        onStopAI={() => aiAbortRef.current?.abort()}
-        aiImproving={aiImprovingBlock}
-      />
-
-      <AIPreviewModal
-        open={aiPreviewOpen}
-        title={aiPreviewTitle}
-        content={aiPreviewContent}
-        charCount={aiPreviewCharCount}
-        maxChars={aiPreviewMaxChars}
-        provider={aiPreviewProvider}
-        model={aiPreviewModel}
-        saving={aiPreviewSaving}
-        onSave={(content) => void handleAIPreviewSave(content)}
-        onCancel={handleAIPreviewCancel}
       />
 
       <ConfirmModal

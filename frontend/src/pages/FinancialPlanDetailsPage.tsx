@@ -21,10 +21,10 @@ import {
 } from "../api";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { PointModal } from "../components/PointModal";
-import { AIPreviewModal } from "../components/AIPreviewModal";
 import { v } from "../shared/theme";
 import { useTheme } from "../features/theme/ThemeContext";
 import { useModalRegistration } from "../hooks/useModalOpen";
+import { useAi } from "../features/ai/AiContext";
 import { textToTiptapDoc } from "../lib/textToTiptap";
 import { tiptapToText } from "../lib/tiptapToText";
 import { type Timeframe, getLocalDateTimeWithSeconds } from "./financial-plan-details/chartUtils";
@@ -49,17 +49,7 @@ export function FinancialPlanDetailsPage() {
   const [timeframe, setTimeframe] = useState<Timeframe>("1W");
   const [deleteTarget, setDeleteTarget] = useState<{ type: "chart" | "point"; id: number; title: string } | null>(null);
 
-  const [aiPreviewOpen, setAiPreviewOpen] = useState(false);
-  const [aiPreviewTitle, setAiPreviewTitle] = useState("");
-  const [aiPreviewContent, setAiPreviewContent] = useState("");
-  const [aiPreviewCharCount, setAiPreviewCharCount] = useState(0);
-  const [aiPreviewMaxChars, setAiPreviewMaxChars] = useState(5000);
-  const [aiPreviewProvider, setAiPreviewProvider] = useState("");
-  const [aiPreviewModel, setAiPreviewModel] = useState("");
-  const [aiPreviewSaving, setAiPreviewSaving] = useState(false);
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
-  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
-  const [aiAbortRef] = useState(() => ({ current: null as AbortController | null }));
+  const ai = useAi();
 
   const [isEditingChart, setIsEditingChart] = useState(false);
   const [chartForm, setChartForm] = useState<{
@@ -203,43 +193,17 @@ export function FinancialPlanDetailsPage() {
     }
   }
 
-  async function handleAiSummary() {
+  function handleAiSummary() {
     if (!chartId) return;
-    const controller = new AbortController();
-    aiAbortRef.current = controller;
-    try {
-      setAiSummaryLoading(true);
-      const result = await summarizeFinancialChartApi(chartId, controller.signal);
-      setAiPreviewTitle("AI-сводка по графику");
-      setAiPreviewContent(result.content);
-      setAiPreviewCharCount(result.char_count);
-      setAiPreviewMaxChars(result.max_chars);
-      setAiPreviewProvider(result.provider);
-      setAiPreviewModel(result.model);
-      setAiPreviewOpen(true);
-    } catch (err: any) {
-      if (err?.name !== "CanceledError" && err?.code !== "ERR_CANCELED") {
-        toast.error("Не удалось получить AI-сводку");
-      }
-    } finally {
-      setAiSummaryLoading(false);
-      aiAbortRef.current = null;
-    }
-  }
-
-  async function handleAIPreviewSave(content: string) {
-    try {
-      setAiPreviewSaving(true);
-      await updateFinancialPlanApi(chartId!, { description: content });
-      setAiSummary(content);
-      setAiPreviewOpen(false);
-      toast.success("AI-сводка сохранена");
-      await fetchData();
-    } catch (err: any) {
-      toast.error(err?.userMessage || "Не удалось сохранить AI-сводку");
-    } finally {
-      setAiPreviewSaving(false);
-    }
+    const promise = summarizeFinancialChartApi(chartId);
+    ai.startTask(promise, {
+      title: "AI-сводка по графику",
+      onSave: async (content) => {
+        await updateFinancialPlanApi(chartId!, { description: content });
+        toast.success("AI-сводка сохранена");
+        await fetchData();
+      },
+    });
   }
 
   async function handleExport(format: "xlsx" | "csv") {
@@ -273,8 +237,6 @@ export function FinancialPlanDetailsPage() {
         isEditing={isEditingChart}
         chartForm={chartForm}
         currencies={currencies}
-        aiSummaryLoading={aiSummaryLoading}
-        aiSummary={aiSummary}
         onFormChange={(field, value) => setChartForm((prev) => ({ ...prev, [field]: value }))}
         onStartEdit={() => setIsEditingChart(true)}
         onSave={() => void saveChart()}
@@ -289,12 +251,7 @@ export function FinancialPlanDetailsPage() {
           setIsEditingChart(false);
         }}
         onDelete={() => setDeleteTarget({ type: "chart", id: chart.id, title: chart.title })}
-        onToggleAI={() => { if (aiSummaryLoading) { aiAbortRef.current?.abort(); } else { void handleAiSummary(); } }}
-        onCopySummary={() => { navigator.clipboard.writeText(aiSummary ?? ""); toast.success("Скопировано"); }}
-        onInsertSummaryToDescription={() => {
-          setChartForm((prev) => ({ ...prev, description: aiSummary ?? "", descriptionDoc: textToTiptapDoc(aiSummary ?? "") }));
-          setIsEditingChart(true);
-        }}
+        onGenerateSummary={handleAiSummary}
       />
 
       {analytics && <AnalyticsPanel analytics={analytics} currencyCode={curCode} />}
@@ -340,18 +297,6 @@ export function FinancialPlanDetailsPage() {
         onConfirm={() => void confirmDelete()}
       />
 
-      <AIPreviewModal
-        open={aiPreviewOpen}
-        title={aiPreviewTitle}
-        content={aiPreviewContent}
-        charCount={aiPreviewCharCount}
-        maxChars={aiPreviewMaxChars}
-        provider={aiPreviewProvider}
-        model={aiPreviewModel}
-        saving={aiPreviewSaving}
-        onSave={(content) => void handleAIPreviewSave(content)}
-        onCancel={() => setAiPreviewOpen(false)}
-      />
     </section>
   );
 }

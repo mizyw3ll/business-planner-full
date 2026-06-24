@@ -243,13 +243,17 @@ export function BlockModal({
 
           <div>
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Дедлайн</label>
-            <input
-              type="date"
-              className={tw.inputBase}
-              style={inputStyle(isDark)}
-              value={form.due_date ?? ""}
-              onChange={(e) => onFormChange("due_date", e.target.value || null)}
-            />
+              <input
+                type="date"
+                className={tw.inputBase}
+                style={inputStyle(isDark)}
+                value={form.due_date ?? ""}
+                min="2000-01-01"
+                max="2099-12-31"
+                onChange={(e) => {
+                  onFormChange("due_date", e.target.value || null);
+                }}
+              />
           </div>
 
           {isRichBlock(form.block_type) && (
