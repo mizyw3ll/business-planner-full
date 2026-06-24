@@ -1,12 +1,16 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { normalizeSwotData } from "../lib/blockDefaults";
 import { ru } from "../i18n/ru";
 import { RichTextEditor } from "./RichTextEditor";
 import { MarkdownPreview } from "./MarkdownPreview";
-import Chart from "react-apexcharts";
-import type { ApexOptions } from "apexcharts";
+import * as echarts from "echarts/core";
+import { LineChart } from "echarts/charts";
+import { GridComponent, TooltipComponent } from "echarts/components";
+import { CanvasRenderer } from "echarts/renderers";
 import { Loader2 } from "lucide-react";
+
+echarts.use([LineChart, GridComponent, TooltipComponent, CanvasRenderer]);
 import { v } from "../shared/theme";
 import type { PlanBlock, FinancialPlan, ChartPoint } from "../api";
 
@@ -132,6 +136,9 @@ function MetricsRenderer({ block }: { block: PlanBlock }) {
 
 /* ─── Chart Embed ─── */
 function ChartMiniView({ points, loading }: { points?: ChartPoint[]; loading?: boolean }) {
+  const chartRef = useRef<HTMLDivElement>(null);
+  const instanceRef = useRef<echarts.ECharts | null>(null);
+
   const data = useMemo(() => {
     if (!points || points.length === 0) return null;
     const grouped: Record<string, { date: string; income: number; expense: number }> = {};
@@ -144,54 +151,71 @@ function ChartMiniView({ points, loading }: { points?: ChartPoint[]; loading?: b
     return Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date));
   }, [points]);
 
-  const series = useMemo(
-    () =>
-      data
-        ? [
-            { name: "Доход", data: data.map((d) => d.income) },
-            { name: "Расход", data: data.map((d) => d.expense) },
-          ]
-        : [],
-    [data],
-  );
+  useEffect(() => {
+    if (!chartRef.current) return;
+    if (instanceRef.current) {
+      instanceRef.current.dispose();
+    }
+    if (!data || data.length === 0) return;
 
-  const options: ApexOptions = {
-    chart: {
-      type: "area",
-      toolbar: { show: false },
-      zoom: { enabled: false },
-      animations: { enabled: true, dynamicAnimation: { speed: 300 } },
-      fontFamily: "inherit",
-      foreColor: "#7e78a8",
-      background: "transparent",
-      sparkline: { enabled: false },
-    },
-    colors: ["#16a34a", "#dc2626"],
-    dataLabels: { enabled: false },
-    fill: {
-      type: "gradient",
-      gradient: {
-        shadeIntensity: 1,
-        opacityFrom: 0.15,
-        opacityTo: 0.01,
-        stops: [0, 95],
+    const instance = echarts.init(chartRef.current, undefined, { renderer: "canvas" });
+    instanceRef.current = instance;
+
+    instance.setOption({
+      color: ["#16a34a", "#dc2626"],
+      grid: { left: 0, right: 0, top: 4, bottom: 0 },
+      xAxis: {
+        type: "category",
+        data: data.map((d) => d.date),
+        show: false,
+        splitLine: { show: false },
       },
-    },
-    stroke: { curve: "smooth", width: 1.5 },
-    grid: { show: false },
-    xaxis: {
-      labels: { show: false },
-      axisBorder: { show: false },
-      axisTicks: { show: false },
-    },
-    yaxis: {
-      labels: { show: false },
-      axisBorder: { show: false },
-      axisTicks: { show: false },
-    },
-    tooltip: { enabled: false },
-    legend: { show: false },
-  };
+      yAxis: {
+        type: "value",
+        show: false,
+        splitLine: { show: false },
+      },
+      series: [
+        {
+          name: "Доход",
+          type: "line",
+          smooth: true,
+          symbol: "none",
+          lineStyle: { width: 1.5 },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: "rgba(22, 163, 74, 0.15)" },
+              { offset: 1, color: "rgba(22, 163, 74, 0.01)" },
+            ]),
+          },
+          data: data.map((d) => d.income),
+        },
+        {
+          name: "Расход",
+          type: "line",
+          smooth: true,
+          symbol: "none",
+          lineStyle: { width: 1.5 },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: "rgba(220, 38, 38, 0.12)" },
+              { offset: 1, color: "rgba(220, 38, 38, 0.01)" },
+            ]),
+          },
+          data: data.map((d) => d.expense),
+        },
+      ],
+      animation: false,
+    });
+
+    const handleResize = () => instance.resize();
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      instance.dispose();
+      instanceRef.current = null;
+    };
+  }, [data]);
 
   if (loading)
     return (
@@ -206,11 +230,7 @@ function ChartMiniView({ points, loading }: { points?: ChartPoint[]; loading?: b
       </p>
     );
 
-  return (
-    <div className="h-32 w-full">
-      <Chart options={options} series={series} type="area" height={128} width="100%" />
-    </div>
-  );
+  return <div ref={chartRef} className="h-32 w-full" />;
 }
 
 function ChartEmbedRenderer({

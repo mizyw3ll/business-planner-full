@@ -1,12 +1,16 @@
 import { memo, useMemo, useRef, useCallback } from "react";
-import { Download, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
-import Chart from "react-apexcharts";
-import type ApexCharts from "apexcharts";
-import type { ApexOptions } from "apexcharts";
+import { Download } from "lucide-react";
+import ReactEChartsCore from "echarts-for-react/lib/core";
+import * as echarts from "echarts/core";
+import { LineChart } from "echarts/charts";
+import { GridComponent, TooltipComponent, LegendComponent, DataZoomComponent } from "echarts/components";
+import { CanvasRenderer } from "echarts/renderers";
 import { type ChartPoint, type Currency } from "../../api";
 import { buttonStyle, v } from "../../shared/theme";
 import { getCurrencySymbol } from "../../shared/currency";
-import { type Timeframe, buildChartData } from "./chartUtils";
+import { buildChartData, type Timeframe } from "./chartUtils";
+
+echarts.use([LineChart, GridComponent, TooltipComponent, LegendComponent, DataZoomComponent, CanvasRenderer]);
 
 interface ChartVisualizationProps {
   points: ChartPoint[];
@@ -40,139 +44,204 @@ export const ChartVisualization = memo(function ChartVisualization({
   onExport,
   onAddPoint,
 }: ChartVisualizationProps) {
-  const chartRef = useRef<ApexCharts | null>(null);
+  const chartRef = useRef<ReactEChartsCore | null>(null);
   const chartData = buildChartData(points, timeframe);
   const curCode = currencies.find((c) => c.id === chartConfig.currency_id)?.code ?? "RUB";
   const curSym = getCurrencySymbol(curCode);
 
   const categories = useMemo(() => chartData.map((d) => d.date), [chartData]);
-  const dataLen = categories.length;
-
-  const series = useMemo(
-    () => [
-      { name: "Доходы", data: chartData.map((d) => d.income) },
-      { name: "Расходы", data: chartData.map((d) => d.expense) },
-      { name: "Итог", data: chartData.map((d) => d.total ?? 0) },
-    ],
-    [chartData],
-  );
 
   const isSparse = chartData.length > 0 && chartData.length <= 2 && points.length >= 2;
 
-  function getCurrentRange(chart: ApexCharts): { minX: number; maxX: number } {
-    const s = chart.getState();
-    if (typeof s.minX === "number" && typeof s.maxX === "number") {
-      return { minX: s.minX, maxX: s.maxX };
-    }
-    return { minX: 0, maxX: dataLen - 1 };
-  }
-
   const handleZoomIn = useCallback(() => {
-    const chart = chartRef.current;
-    if (!chart || dataLen < 2) return;
-    const { minX, maxX } = getCurrentRange(chart);
-    const center = (minX + maxX) / 2;
-    const range = maxX - minX;
-    if (range < 2) return;
-    const newRange = Math.max(range * 0.6, 1);
-    chart.zoomX(Math.max(center - newRange / 2, 0), Math.min(center + newRange / 2, dataLen - 1));
-  }, [dataLen]);
+    const instance = chartRef.current?.getEchartsInstance();
+    if (!instance) return;
+    const option = instance.getOption() as Record<string, unknown>;
+    const zoom = (option.dataZoom as Array<Record<string, unknown>> | undefined) ?? [];
+    const start = (zoom[0]?.start as number) ?? 0;
+    const end = (zoom[0]?.end as number) ?? 100;
+    const range = end - start;
+    if (range < 5) return;
+    const center = (start + end) / 2;
+    const newRange = range * 0.6;
+    instance.dispatchAction({
+      type: "dataZoom",
+      start: Math.max(center - newRange / 2, 0),
+      end: Math.min(center + newRange / 2, 100),
+    });
+  }, []);
 
   const handleZoomOut = useCallback(() => {
-    const chart = chartRef.current;
-    if (!chart || dataLen < 2) return;
-    const { minX, maxX } = getCurrentRange(chart);
-    const center = (minX + maxX) / 2;
-    const range = maxX - minX;
-    const newRange = Math.min(range / 0.6, dataLen - 1);
-    chart.zoomX(Math.max(center - newRange / 2, 0), Math.min(center + newRange / 2, dataLen - 1));
-  }, [dataLen]);
+    const instance = chartRef.current?.getEchartsInstance();
+    if (!instance) return;
+    const option = instance.getOption() as Record<string, unknown>;
+    const zoom = (option.dataZoom as Array<Record<string, unknown>> | undefined) ?? [];
+    const start = (zoom[0]?.start as number) ?? 0;
+    const end = (zoom[0]?.end as number) ?? 100;
+    const range = end - start;
+    const center = (start + end) / 2;
+    const newRange = Math.min(range / 0.6, 100);
+    instance.dispatchAction({
+      type: "dataZoom",
+      start: Math.max(center - newRange / 2, 0),
+      end: Math.min(center + newRange / 2, 100),
+    });
+  }, []);
 
   const handleReset = useCallback(() => {
-    const chart = chartRef.current;
-    if (!chart) return;
-    chart.resetSeries();
-    chart.zoomX(0, dataLen - 1);
-  }, [dataLen]);
+    const instance = chartRef.current?.getEchartsInstance();
+    if (!instance) return;
+    instance.dispatchAction({
+      type: "dataZoom",
+      start: 0,
+      end: 100,
+    });
+  }, []);
 
-  const options = useMemo<ApexOptions>(
+  const option = useMemo(
     () => ({
-      chart: {
-        type: "area",
-        stacked: false,
-        toolbar: { show: false },
-        zoom: { enabled: true, type: "x", autoScaleYaxis: true },
-        pan: { enabled: true, type: "x" },
-        selection: { enabled: false },
-        animations: {
-          enabled: true,
-          easing: "easeinout",
-          speed: 600,
-          animateGradually: { enabled: true, delay: 80 },
-          dynamicAnimation: { enabled: true, speed: 400 },
-        },
-        fontFamily: "inherit",
-        foreColor: isDark ? "#7e78a8" : "#64748b",
-        background: "transparent",
-      },
-      colors: [INCOME_COLOR, EXPENSE_COLOR, TOTAL_COLOR],
-      dataLabels: { enabled: false },
-      fill: {
-        type: "gradient",
-        gradient: {
-          shadeIntensity: 1,
-          opacityFrom: 0.25,
-          opacityTo: 0.02,
-          stops: [0, 95],
-        },
-      },
-      stroke: {
-        curve: "smooth",
-        width: [2, 2, 2.5],
-      },
-      markers: {
-        size: 0,
-        hover: { size: 5, sizeOffset: 3 },
-      },
+      color: [INCOME_COLOR, EXPENSE_COLOR, TOTAL_COLOR],
       grid: {
-        borderColor: isDark ? "rgba(99,102,241,0.06)" : "rgba(99,102,241,0.08)",
-        strokeDashArray: 3,
-        xaxis: { lines: { show: false } },
-      },
-      xaxis: {
-        categories,
-        axisBorder: { show: false },
-        axisTicks: { show: false },
-        labels: {
-          style: { colors: isDark ? "#7e78a8" : "#64748b", fontSize: "11px" },
-          hideOverlappingLabels: true,
-          trim: true,
-        },
-      },
-      yaxis: {
-        labels: {
-          style: { colors: isDark ? "#7e78a8" : "#64748b", fontSize: "11px" },
-          formatter: (val: number) => val.toFixed(0),
-        },
-        axisBorder: { show: false },
-        axisTicks: { show: false },
+        left: 10,
+        right: 10,
+        top: 10,
+        bottom: 50,
+        containLabel: true,
       },
       tooltip: {
-        enabled: true,
-        shared: true,
-        intersect: false,
-        followCursor: true,
-        theme: isDark ? "dark" : "light",
-        x: { show: true, format: "dd.MM.yyyy" },
-        style: { fontSize: "12px", fontFamily: "inherit" },
-        marker: { show: true },
-        y: {
-          formatter: (val: number) => `${val.toFixed(2)} ${curSym}`,
+        trigger: "axis",
+        backgroundColor: isDark ? "rgba(14, 12, 36, 0.95)" : "rgba(255,255,255,0.95)",
+        borderColor: isDark ? "rgba(99,102,241,0.2)" : "rgba(99,102,241,0.15)",
+        borderRadius: 12,
+        padding: [12, 16],
+        textStyle: {
+          fontSize: 12,
+          color: isDark ? "#f0eeff" : "#0f172a",
+        },
+        formatter(params) {
+          const items = Array.isArray(params) ? params : [];
+          const date = items[0]?.axisValue ?? "";
+          let html = `<div style="font-weight:600;margin-bottom:6px;font-size:12px;color:${isDark ? "#f0eeff" : "#0f172a"}">${date}</div>`;
+          for (const item of items) {
+            const val = Number(item.value).toFixed(2);
+            html += `<div style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:2px">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${item.color}"></span>
+              ${item.seriesName}: <strong>${val} ${curSym}</strong>
+            </div>`;
+          }
+          return html;
         },
       },
-      legend: { show: false },
+      legend: {
+        show: categories.length > 0,
+        bottom: 0,
+        left: "center",
+        icon: "roundRect",
+        itemWidth: 12,
+        itemHeight: 4,
+        textStyle: {
+          fontSize: 12,
+          color: isDark ? "#7e78a8" : "#64748b",
+        },
+      },
+      xAxis: {
+        type: "category",
+        data: categories,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: {
+          fontSize: 11,
+          color: isDark ? "#7e78a8" : "#64748b",
+          hideOverlap: true,
+        },
+        splitLine: { show: false },
+      },
+      yAxis: {
+        type: "value",
+        splitLine: {
+          lineStyle: {
+            color: isDark ? "rgba(99,102,241,0.06)" : "rgba(99,102,241,0.08)",
+            type: "dashed" as const,
+          },
+        },
+        axisLabel: {
+          fontSize: 11,
+          color: isDark ? "#7e78a8" : "#64748b",
+        },
+        axisLine: { show: false },
+        axisTick: { show: false },
+      },
+      dataZoom: [
+        {
+          type: "inside",
+          start: 0,
+          end: 100,
+          minSpan: 5,
+        },
+        {
+          type: "slider",
+          start: 0,
+          end: 100,
+          minSpan: 5,
+          bottom: 20,
+          borderColor: isDark ? "rgba(99,102,241,0.15)" : "rgba(99,102,241,0.1)",
+          backgroundColor: "transparent",
+          fillerColor: isDark ? "rgba(99,102,241,0.12)" : "rgba(99,102,241,0.08)",
+          handleStyle: {
+            color: isDark ? "rgba(99,102,241,0.4)" : "rgba(99,102,241,0.3)",
+          },
+          textStyle: {
+            fontSize: 10,
+            color: isDark ? "#7e78a8" : "#64748b",
+          },
+          selectedDataBackground: {
+            lineStyle: { color: TOTAL_COLOR, opacity: 0.3 },
+            areaStyle: { color: TOTAL_COLOR, opacity: 0.05 },
+          },
+        },
+      ],
+      series: [
+        {
+          name: "Доходы",
+          type: "line",
+          smooth: true,
+          symbol: "none",
+          lineStyle: { width: 2 },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: "rgba(16, 185, 129, 0.25)" },
+              { offset: 1, color: "rgba(16, 185, 129, 0.02)" },
+            ]),
+          },
+          data: chartData.map((d) => d.income),
+        },
+        {
+          name: "Расходы",
+          type: "line",
+          smooth: true,
+          symbol: "none",
+          lineStyle: { width: 2 },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: "rgba(244, 63, 94, 0.2)" },
+              { offset: 1, color: "rgba(244, 63, 94, 0.01)" },
+            ]),
+          },
+          data: chartData.map((d) => d.expense),
+        },
+        {
+          name: "Итог",
+          type: "line",
+          smooth: true,
+          symbol: "none",
+          lineStyle: { width: 2.5, color: TOTAL_COLOR },
+          data: chartData.map((d) => d.total ?? 0),
+        },
+      ],
+      animationDuration: 600,
+      animationEasing: "cubicOut" as const,
     }),
-    [categories, isDark, curSym],
+    [categories, chartData, isDark, curSym],
   );
 
   return (
@@ -199,9 +268,36 @@ export const ChartVisualization = memo(function ChartVisualization({
         </div>
 
         <div className="flex gap-1">
-          <ZoomBtn icon={ZoomIn} title="Приблизить" onClick={handleZoomIn} isDark={isDark} />
-          <ZoomBtn icon={ZoomOut} title="Отдалить" onClick={handleZoomOut} isDark={isDark} />
-          <ZoomBtn icon={Maximize2} title="Сбросить масштаб" onClick={handleReset} isDark={isDark} />
+          <button
+            className="flex items-center justify-center rounded-lg border p-1.5 transition-colors"
+            style={{ borderColor: v("border-secondary"), color: v("text-secondary"), fontSize: 16, lineHeight: 1 }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = v("bg-hover"); }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            onClick={handleZoomIn}
+            title="Приблизить"
+          >
+            +
+          </button>
+          <button
+            className="flex items-center justify-center rounded-lg border p-1.5 transition-colors"
+            style={{ borderColor: v("border-secondary"), color: v("text-secondary"), fontSize: 16, lineHeight: 1 }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = v("bg-hover"); }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            onClick={handleZoomOut}
+            title="Отдалить"
+          >
+            &minus;
+          </button>
+          <button
+            className="flex items-center justify-center rounded-lg border p-1.5 transition-colors text-xs"
+            style={{ borderColor: v("border-secondary"), color: v("text-secondary") }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = v("bg-hover"); }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            onClick={handleReset}
+            title="Сбросить масштаб"
+          >
+            ⟲
+          </button>
         </div>
 
         <div className="ml-auto flex gap-2">
@@ -244,12 +340,22 @@ export const ChartVisualization = memo(function ChartVisualization({
         </div>
       ) : (
         <div className="relative w-full overflow-hidden rounded-xl">
-          <Chart options={options} series={series} type="area" height={340} width="100%" chartRef={chartRef} />
+          <ReactEChartsCore
+            ref={chartRef}
+            echarts={echarts}
+            option={option}
+            style={{ height: 340 }}
+            notMerge
+            lazyUpdate
+          />
           {isSparse && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <p
-                className="rounded-lg bg-[--bg-secondary]/80 px-4 py-2 text-center text-xs leading-relaxed backdrop-blur-sm"
-                style={{ background: `color-mix(in srgb, ${v("bg-secondary")} 80%, transparent)`, color: v("text-muted") }}
+                className="rounded-lg px-4 py-2 text-center text-xs leading-relaxed backdrop-blur-sm"
+                style={{
+                  background: `color-mix(in srgb, ${v("bg-secondary")} 80%, transparent)`,
+                  color: v("text-muted"),
+                }}
               >
                 Данных за этот период недостаточно<br />для отображения тренда —<br />добавьте больше точек
               </p>
@@ -260,29 +366,3 @@ export const ChartVisualization = memo(function ChartVisualization({
     </article>
   );
 });
-
-/* ─── Zoom button ─── */
-function ZoomBtn({
-  icon: Icon,
-  title,
-  onClick,
-  isDark,
-}: {
-  icon: React.ComponentType<{ size?: number }>;
-  title: string;
-  onClick: () => void;
-  isDark: boolean;
-}) {
-  return (
-    <button
-      className="flex items-center justify-center rounded-lg border p-1.5 transition-colors"
-      style={{ borderColor: v("border-secondary"), color: v("text-secondary") }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = v("bg-hover"); }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-      onClick={onClick}
-      title={title}
-    >
-      <Icon size={14} />
-    </button>
-  );
-}

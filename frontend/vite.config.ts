@@ -38,7 +38,7 @@ export default defineConfig({
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router')) {
             return 'react-vendor';
           }
-          if (id.includes('node_modules/apexcharts') || id.includes('node_modules/react-apexcharts')) {
+          if (id.includes('node_modules/echarts')) {
             return 'charts';
           }
           if (id.includes('node_modules/@tiptap')) {
