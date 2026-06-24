@@ -172,7 +172,7 @@ export function HomePage({ onOpenAuth }: { onOpenAuth: () => void }) {
       </nav>
 
       {/* Hero */}
-      <section className="relative flex min-h-[90vh] flex-col items-center justify-center px-6 pt-24 pb-16 md:pb-[60px] pb-[30px]">
+      <section className="relative flex min-h-screen flex-col items-center justify-center px-6 pt-24 pb-16">
         <div className="animate-fade-in max-w-3xl text-center">
           <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-white md:text-6xl lg:text-7xl">
             Бизнес-планы
@@ -199,7 +199,7 @@ export function HomePage({ onOpenAuth }: { onOpenAuth: () => void }) {
       </section>
 
       {/* Features */}
-      <section id="features" className="relative md:pb-[60px] pb-[30px] px-6">
+      <section id="features" className="relative px-6" style={{ paddingBottom: "clamp(30px, 4vw, 60px)" }}>
         <div className="mx-auto max-w-6xl">
           <div className="mb-10 md:mb-12 text-center">
             <h2 className="mb-3 text-2xl font-bold text-white md:text-4xl">Всё что нужно</h2>
@@ -231,7 +231,7 @@ export function HomePage({ onOpenAuth }: { onOpenAuth: () => void }) {
       </section>
 
       {/* Stats */}
-      <section ref={statsRef} className="relative md:pb-[60px] pb-[30px] px-6">
+      <section ref={statsRef} className="relative px-6" style={{ paddingBottom: "clamp(30px, 4vw, 60px)" }}>
         <div className="mx-auto max-w-3xl">
           <div
             className="grid grid-cols-2 gap-6"
@@ -258,7 +258,7 @@ export function HomePage({ onOpenAuth }: { onOpenAuth: () => void }) {
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" ref={stepsRef} className="relative md:pb-[60px] pb-[30px] px-6">
+      <section id="how-it-works" ref={stepsRef} className="relative px-6" style={{ paddingBottom: "clamp(30px, 4vw, 60px)" }}>
         <div className="mx-auto max-w-4xl">
           <div className="mb-10 md:mb-12 text-center">
             <h2 className="mb-3 text-2xl font-bold text-white md:text-4xl">Как это работает</h2>
@@ -288,7 +288,7 @@ export function HomePage({ onOpenAuth }: { onOpenAuth: () => void }) {
       </section>
 
       {/* CTA */}
-      <section ref={ctaRef} className="relative md:pb-[60px] pb-[30px] px-6">
+      <section ref={ctaRef} className="relative px-6" style={{ paddingBottom: "clamp(30px, 4vw, 60px)" }}>
         <div className="mx-auto max-w-2xl text-center">
           <div
             style={{
@@ -315,7 +315,7 @@ export function HomePage({ onOpenAuth }: { onOpenAuth: () => void }) {
       </section>
 
       {/* Footer */}
-      <footer className="relative px-6 md:pb-[60px] pb-[30px] pt-8" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      <footer className="relative px-6 pt-8" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingBottom: "clamp(30px, 4vw, 60px)" }}>
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 md:flex-row">
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <div className="flex h-6 w-6 items-center justify-center rounded" style={{ background: "#6366f1" }}>
