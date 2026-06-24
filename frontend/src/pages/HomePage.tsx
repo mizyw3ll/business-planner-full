@@ -179,7 +179,7 @@ export function HomePage({ onOpenAuth }: { onOpenAuth: () => void }) {
             <br />
             <span style={{ color: "#818cf8" }}>с ИИ-помощником</span>
           </h1>
-          <p className="mx-auto mb-10 max-w-xl text-base leading-relaxed md:text-lg" style={{ color: "#8b85b0 }}">
+          <p className="mx-auto mb-10 max-w-xl text-base leading-relaxed md:text-lg" style={{ color: "#8b85b0" }}>
             Платформа для создания бизнес-планов, финансового моделирования и управления задачами.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
