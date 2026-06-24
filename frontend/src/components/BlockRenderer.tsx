@@ -306,7 +306,7 @@ function ChartEmbedRenderer({
     );
 
   return (
-    <div className="mt-2 grid gap-3 sm:grid-cols-2">
+    <div className="mt-2 flex flex-col gap-3">
       {linked.map((chart) => (
         <div
           key={chart.id}
