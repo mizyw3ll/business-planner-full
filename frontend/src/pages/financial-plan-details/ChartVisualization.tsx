@@ -51,8 +51,6 @@ export const ChartVisualization = memo(function ChartVisualization({
 
   const categories = useMemo(() => chartData.map((d) => d.date), [chartData]);
 
-  const isSparse = chartData.length > 0 && chartData.length <= 2 && points.length >= 2;
-
   const handleZoomIn = useCallback(() => {
     const instance = chartRef.current?.getEchartsInstance();
     if (!instance) return;
@@ -348,19 +346,7 @@ export const ChartVisualization = memo(function ChartVisualization({
             notMerge
             lazyUpdate
           />
-          {isSparse && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <p
-                className="rounded-lg px-4 py-2 text-center text-xs leading-relaxed backdrop-blur-sm"
-                style={{
-                  background: `color-mix(in srgb, ${v("bg-secondary")} 80%, transparent)`,
-                  color: v("text-muted"),
-                }}
-              >
-                Данных за этот период недостаточно<br />для отображения тренда —<br />добавьте больше точек
-              </p>
-            </div>
-          )}
+
         </div>
       )}
     </article>
