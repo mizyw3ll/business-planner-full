@@ -1,10 +1,11 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { normalizeSwotData } from "../lib/blockDefaults";
 import { ru } from "../i18n/ru";
 import { RichTextEditor } from "./RichTextEditor";
 import { MarkdownPreview } from "./MarkdownPreview";
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ChartWrapper } from "../shared/components/ChartWrapper";
+import Chart from "react-apexcharts";
+import type { ApexOptions } from "apexcharts";
 import { Loader2 } from "lucide-react";
 import { v } from "../shared/theme";
 import type { PlanBlock, FinancialPlan, ChartPoint } from "../api";
@@ -131,60 +132,84 @@ function MetricsRenderer({ block }: { block: PlanBlock }) {
 
 /* ─── Chart Embed ─── */
 function ChartMiniView({ points, loading }: { points?: ChartPoint[]; loading?: boolean }) {
+  const data = useMemo(() => {
+    if (!points || points.length === 0) return null;
+    const grouped: Record<string, { date: string; income: number; expense: number }> = {};
+    for (const p of points) {
+      const key = p.date.slice(0, 10);
+      if (!grouped[key]) grouped[key] = { date: key, income: 0, expense: 0 };
+      if (p.type === "income") grouped[key].income += Number(p.amount);
+      else grouped[key].expense += Number(p.amount);
+    }
+    return Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date));
+  }, [points]);
+
+  const series = useMemo(
+    () =>
+      data
+        ? [
+            { name: "Доход", data: data.map((d) => d.income) },
+            { name: "Расход", data: data.map((d) => d.expense) },
+          ]
+        : [],
+    [data],
+  );
+
+  const options: ApexOptions = {
+    chart: {
+      type: "area",
+      toolbar: { show: false },
+      zoom: { enabled: false },
+      animations: { enabled: true, dynamicAnimation: { speed: 300 } },
+      fontFamily: "inherit",
+      foreColor: "#7e78a8",
+      background: "transparent",
+      sparkline: { enabled: false },
+    },
+    colors: ["#16a34a", "#dc2626"],
+    dataLabels: { enabled: false },
+    fill: {
+      type: "gradient",
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.15,
+        opacityTo: 0.01,
+        stops: [0, 95],
+      },
+    },
+    stroke: { curve: "smooth", width: 1.5 },
+    grid: { show: false },
+    xaxis: {
+      labels: { show: false },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+    },
+    yaxis: {
+      labels: { show: false },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+    },
+    tooltip: { enabled: false },
+    legend: { show: false },
+  };
+
   if (loading)
     return (
       <div className="flex h-24 items-center justify-center">
         <Loader2 className="animate-spin" size={16} style={{ color: v("text-muted") }} />
       </div>
     );
-  if (!points || points.length === 0)
+  if (!data || data.length === 0)
     return (
       <p className="mt-2 text-xs" style={{ color: v("text-muted") }}>
         Нет данных
       </p>
     );
 
-  const grouped: Record<string, { date: string; income: number; expense: number }> = {};
-  for (const p of points) {
-    const key = p.date.slice(0, 10);
-    if (!grouped[key]) grouped[key] = { date: key, income: 0, expense: 0 };
-    if (p.type === "income") grouped[key].income += Number(p.amount);
-    else grouped[key].expense += Number(p.amount);
-  }
-  const data = Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date));
-  const maxVal = Math.max(...data.map((d) => Math.max(d.income, d.expense)), 1);
-
   return (
-    <ChartWrapper className="h-32 w-full">
-      <ResponsiveContainer width="100%" height={128}>
-        <AreaChart data={data}>
-          <XAxis dataKey="date" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-          <YAxis domain={[0, maxVal * 1.15]} hide />
-          <Tooltip
-            contentStyle={{ fontSize: 11, background: "#1c1c1c", border: "1px solid #2a2a2a", borderRadius: 6 }}
-            formatter={(value, name) => [Number(value).toFixed(2), name === "income" ? "Доход" : "Расход"]}
-          />
-          <Area
-            type="monotone"
-            dataKey="income"
-            stroke="#16a34a"
-            fill="#16a34a"
-            fillOpacity={0.15}
-            strokeWidth={1.5}
-            dot={false}
-          />
-          <Area
-            type="monotone"
-            dataKey="expense"
-            stroke="#dc2626"
-            fill="#dc2626"
-            fillOpacity={0.12}
-            strokeWidth={1.5}
-            dot={false}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </ChartWrapper>
+    <div className="h-32 w-full">
+      <Chart options={options} series={series} type="area" height={128} width="100%" />
+    </div>
   );
 }
 

@@ -14,6 +14,7 @@ type TimeframeConfig = {
 
 export type AggregatedPoint = {
   date: string;
+  isoDate: string;
   timestamp: number;
   income: number;
   expense: number;
@@ -37,6 +38,13 @@ function getBucketDate(date: Date, bucket: TimeframeConfig["bucket"]) {
     return new Date(date.getFullYear(), date.getMonth(), diff);
   }
   return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function toIsoDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function getBucketLabel(date: Date, bucket: TimeframeConfig["bucket"]) {
@@ -83,6 +91,7 @@ export function buildChartData(points: ChartPoint[], timeframe: Timeframe): Aggr
     } else {
       aggregated.set(bucketTimestamp, {
         date: getBucketLabel(bucketDate, bucket),
+        isoDate: toIsoDate(bucketDate),
         timestamp: bucketTimestamp,
         income: point.type === "income" ? amount : 0,
         expense: point.type === "expense" ? amount : 0,

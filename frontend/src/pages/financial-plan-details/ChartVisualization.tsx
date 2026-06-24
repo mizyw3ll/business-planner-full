@@ -1,7 +1,8 @@
-import { memo } from "react";
-import { Download } from "lucide-react";
-import { CartesianGrid, Line, Area, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ChartWrapper } from "../../shared/components/ChartWrapper";
+import { memo, useMemo, useRef, useCallback } from "react";
+import { Download, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import Chart from "react-apexcharts";
+import type ApexCharts from "apexcharts";
+import type { ApexOptions } from "apexcharts";
 import { type ChartPoint, type Currency } from "../../api";
 import { buttonStyle, v } from "../../shared/theme";
 import { getCurrencySymbol } from "../../shared/currency";
@@ -18,38 +19,178 @@ interface ChartVisualizationProps {
   onAddPoint: () => void;
 }
 
+const INCOME_COLOR = "#10b981";
+const EXPENSE_COLOR = "#f43f5e";
+const TOTAL_COLOR = "#6366f1";
+
+const TIMEFRAME_LABELS: Record<Timeframe, string> = {
+  "1W": "Неделя",
+  "1M": "Месяц",
+  "3M": "3 месяца",
+  "1Y": "Год",
+};
+
 export const ChartVisualization = memo(function ChartVisualization({
   points,
   timeframe,
   isDark,
-  chart,
+  chart: chartConfig,
   currencies,
   onTimeframeChange,
   onExport,
   onAddPoint,
 }: ChartVisualizationProps) {
+  const chartRef = useRef<ApexCharts | null>(null);
   const chartData = buildChartData(points, timeframe);
+  const curCode = currencies.find((c) => c.id === chartConfig.currency_id)?.code ?? "RUB";
+  const curSym = getCurrencySymbol(curCode);
+
+  const categories = useMemo(() => chartData.map((d) => d.date), [chartData]);
+
+  const series = useMemo(
+    () => [
+      { name: "Доходы", data: chartData.map((d) => d.income) },
+      { name: "Расходы", data: chartData.map((d) => d.expense) },
+      { name: "Итог", data: chartData.map((d) => d.total ?? 0) },
+    ],
+    [chartData],
+  );
+
+  const isSparse = chartData.length > 0 && chartData.length <= 2 && points.length >= 2;
+
+  const handleZoomIn = useCallback(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const s = chart.getState();
+    const center = (s.minX + s.maxX) / 2;
+    const range = s.maxX - s.minX;
+    if (range < 2) return;
+    const newRange = range * 0.6;
+    chart.zoomX(center - newRange / 2, center + newRange / 2);
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const s = chart.getState();
+    const center = (s.minX + s.maxX) / 2;
+    const range = s.maxX - s.minX;
+    const newRange = range / 0.6;
+    chart.zoomX(center - newRange / 2, center + newRange / 2);
+  }, []);
+
+  const handleReset = useCallback(() => {
+    chartRef.current?.resetSeries();
+  }, []);
+
+  const options = useMemo<ApexOptions>(
+    () => ({
+      chart: {
+        type: "area",
+        stacked: false,
+        toolbar: { show: false },
+        zoom: { enabled: true, type: "x", autoScaleYaxis: true },
+        pan: { enabled: false },
+        animations: {
+          enabled: true,
+          easing: "easeinout",
+          speed: 600,
+          animateGradually: { enabled: true, delay: 80 },
+          dynamicAnimation: { enabled: true, speed: 400 },
+        },
+        fontFamily: "inherit",
+        foreColor: isDark ? "#7e78a8" : "#64748b",
+        background: "transparent",
+      },
+      colors: [INCOME_COLOR, EXPENSE_COLOR, TOTAL_COLOR],
+      dataLabels: { enabled: false },
+      fill: {
+        type: "gradient",
+        gradient: {
+          shadeIntensity: 1,
+          opacityFrom: 0.25,
+          opacityTo: 0.02,
+          stops: [0, 95],
+        },
+      },
+      stroke: {
+        curve: "smooth",
+        width: [2, 2, 2.5],
+      },
+      markers: {
+        size: 0,
+        hover: { size: 5, sizeOffset: 3 },
+      },
+      grid: {
+        borderColor: isDark ? "rgba(99,102,241,0.06)" : "rgba(99,102,241,0.08)",
+        strokeDashArray: 3,
+        xaxis: { lines: { show: false } },
+      },
+      xaxis: {
+        categories,
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+        labels: {
+          style: { colors: isDark ? "#7e78a8" : "#64748b", fontSize: "11px" },
+          hideOverlappingLabels: true,
+          trim: true,
+        },
+      },
+      yaxis: {
+        labels: {
+          style: { colors: isDark ? "#7e78a8" : "#64748b", fontSize: "11px" },
+          formatter: (val: number) => val.toFixed(0),
+        },
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+      },
+      tooltip: {
+        enabled: true,
+        shared: true,
+        intersect: false,
+        followCursor: true,
+        theme: isDark ? "dark" : "light",
+        x: { show: true, format: "dd.MM.yyyy" },
+        style: { fontSize: "12px", fontFamily: "inherit" },
+        marker: { show: true },
+        y: {
+          formatter: (val: number) => `${val.toFixed(2)} ${curSym}`,
+        },
+      },
+      legend: { show: false },
+    }),
+    [categories, isDark, curSym],
+  );
 
   return (
     <article
       className="rounded-2xl border p-5"
       style={{ borderColor: v("border-primary"), background: v("bg-secondary") }}
     >
-      <div className="relative mb-3 flex flex-wrap items-center gap-2">
-        {(["1W", "1M", "3M", "1Y"] as Timeframe[]).map((tf) => (
-          <button
-            key={tf}
-            className="rounded-lg px-3 py-1.5 text-xs transition-colors"
-            style={
-              timeframe === tf
-                ? { background: v("bg-active"), color: v("text-primary") }
-                : { background: v("bg-secondary"), color: v("text-secondary") }
-            }
-            onClick={() => onTimeframeChange(tf)}
-          >
-            {tf === "1W" ? "По неделям" : tf === "1M" ? "Месяц" : tf === "3M" ? "3 месяца" : "Год"}
-          </button>
-        ))}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="flex rounded-lg border p-0.5" style={{ borderColor: v("border-primary") }}>
+          {(["1W", "1M", "3M", "1Y"] as Timeframe[]).map((tf) => (
+            <button
+              key={tf}
+              className="rounded-md px-3 py-1.5 text-xs font-medium transition-all"
+              style={
+                timeframe === tf
+                  ? { background: v("bg-active"), color: v("text-primary"), boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }
+                  : { background: "transparent", color: v("text-secondary") }
+              }
+              onClick={() => onTimeframeChange(tf)}
+            >
+              {TIMEFRAME_LABELS[tf]}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex gap-1">
+          <ZoomBtn icon={ZoomIn} title="Приблизить" onClick={handleZoomIn} isDark={isDark} />
+          <ZoomBtn icon={ZoomOut} title="Отдалить" onClick={handleZoomOut} isDark={isDark} />
+          <ZoomBtn icon={Maximize2} title="Сбросить масштаб" onClick={handleReset} isDark={isDark} />
+        </div>
+
         <div className="ml-auto flex gap-2">
           <button
             className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition-colors"
@@ -89,124 +230,46 @@ export const ChartVisualization = memo(function ChartVisualization({
           </div>
         </div>
       ) : (
-        <>
-          <div className="relative h-80 w-full overflow-x-auto overflow-y-hidden">
-            <ChartWrapper className="h-full min-w-[600px]">
-              <ResponsiveContainer width="100%" height={320}>
-                <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <svg style={{ position: "absolute", width: 0, height: 0 }}>
-                    <defs>
-                      <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.25} />
-                        <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="totalGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                  <CartesianGrid
-                    stroke={isDark ? "rgba(99,102,241,0.06)" : "rgba(99,102,241,0.08)"}
-                    strokeDasharray="3 3"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="date"
-                    stroke={isDark ? "#555080" : "#94a3b8"}
-                    tick={{ fontSize: 11, fill: isDark ? "#7e78a8" : "#64748b" }}
-                    tickLine={false}
-                    axisLine={{ stroke: isDark ? "rgba(99,102,241,0.1)" : "rgba(99,102,241,0.12)" }}
-                  />
-                  <YAxis
-                    stroke={isDark ? "#555080" : "#94a3b8"}
-                    tick={{ fontSize: 11, fill: isDark ? "#7e78a8" : "#64748b" }}
-                    tickLine={false}
-                    axisLine={false}
-                    width={50}
-                  />
-                  <Tooltip
-                    cursor={{
-                      stroke: isDark ? "rgba(99,102,241,0.2)" : "rgba(99,102,241,0.15)",
-                      strokeWidth: 1,
-                      strokeDasharray: "4 4",
-                    }}
-                    contentStyle={{
-                      background: isDark ? "rgba(14, 12, 36, 0.95)" : "rgba(255,255,255,0.95)",
-                      border: `1px solid ${isDark ? "rgba(99,102,241,0.2)" : "rgba(99,102,241,0.15)"}`,
-                      borderRadius: "12px",
-                      boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.4)" : "0 4px 16px rgba(0,0,0,0.08)",
-                      padding: "12px 16px",
-                      backdropFilter: "blur(12px)",
-                    }}
-                    labelStyle={{
-                      color: isDark ? "#f0eeff" : "#0f172a",
-                      fontWeight: 600,
-                      marginBottom: 6,
-                      fontSize: 12,
-                    }}
-                    content={({ active, payload, label }) => {
-                      if (!active || !payload?.length) return null;
-                      const item = payload[0]?.payload as {
-                        income?: number;
-                        expense?: number;
-                        total?: number | null;
-                      };
-                      const curCode = currencies.find((c) => c.id === chart.currency_id)?.code ?? "RUB";
-                      const curSym = getCurrencySymbol(curCode);
-                      return (
-                        <div>
-                          <p style={{ color: isDark ? "#f0eeff" : "#0f172a", fontWeight: 600, marginBottom: 6, fontSize: 12 }}>
-                            {label}
-                          </p>
-                          {typeof item.income === "number" && item.income > 0 && (
-                            <p style={{ color: "#10b981", fontSize: 12, marginBottom: 2 }}>
-                              <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#10b981", marginRight: 6 }} />
-                              Доходы: {item.income.toFixed(2)} {curSym}
-                            </p>
-                          )}
-                          {typeof item.expense === "number" && item.expense > 0 && (
-                            <p style={{ color: "#f43f5e", fontSize: 12, marginBottom: 2 }}>
-                              <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#f43f5e", marginRight: 6 }} />
-                              Расходы: {item.expense.toFixed(2)} {curSym}
-                            </p>
-                          )}
-                          {typeof item.total === "number" && (
-                            <p style={{
-                              color: isDark ? "#f0eeff" : "#0f172a",
-                              fontWeight: 700,
-                              marginTop: 6,
-                              paddingTop: 6,
-                              borderTop: `1px solid ${isDark ? "rgba(99,102,241,0.15)" : "rgba(99,102,241,0.1)"}`,
-                              fontSize: 13,
-                            }}>
-                              Итог: {item.total.toFixed(2)} {curSym}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    }}
-                  />
-                  <Area type="monotone" dataKey="income" stroke="none" fill="url(#incomeGradient)" fillOpacity={1} isAnimationActive animationDuration={600} />
-                  <Area type="monotone" dataKey="expense" stroke="none" fill="url(#expenseGradient)" fillOpacity={1} isAnimationActive animationDuration={600} />
-                  <Line type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2} dot={{ fill: "#10b981", strokeWidth: 0, r: 3 }} activeDot={{ r: 5, stroke: "#10b981", strokeWidth: 2, fill: isDark ? "#0e0c24" : "#fff" }} isAnimationActive animationDuration={600} />
-                  <Line type="monotone" dataKey="expense" stroke="#f43f5e" strokeWidth={2} dot={{ fill: "#f43f5e", strokeWidth: 0, r: 3 }} activeDot={{ r: 5, stroke: "#f43f5e", strokeWidth: 2, fill: isDark ? "#0e0c24" : "#fff" }} isAnimationActive animationDuration={600} />
-                  <Line type="monotone" dataKey="total" stroke="#6366f1" strokeWidth={2.5} dot={{ fill: "#6366f1", strokeWidth: 0, r: 3 }} activeDot={{ r: 6, stroke: "#6366f1", strokeWidth: 2, fill: isDark ? "#0e0c24" : "#fff", strokeDasharray: "0" }} strokeDasharray="0" isAnimationActive animationDuration={600} />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartWrapper>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-xs" style={{ color: isDark ? "#7e78a8" : "#64748b" }}>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: "#10b981" }} /> Доходы</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: "#f43f5e" }} /> Расходы</span>
-            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: "#6366f1" }} /> Итог</span>
-          </div>
-        </>
+        <div className="relative w-full overflow-hidden rounded-xl">
+          <Chart options={options} series={series} type="area" height={340} width="100%" chartRef={chartRef} />
+          {isSparse && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <p
+                className="rounded-lg bg-[--bg-secondary]/80 px-4 py-2 text-center text-xs leading-relaxed backdrop-blur-sm"
+                style={{ background: `color-mix(in srgb, ${v("bg-secondary")} 80%, transparent)`, color: v("text-muted") }}
+              >
+                Данных за этот период недостаточно<br />для отображения тренда —<br />добавьте больше точек
+              </p>
+            </div>
+          )}
+        </div>
       )}
     </article>
   );
 });
+
+/* ─── Zoom button ─── */
+function ZoomBtn({
+  icon: Icon,
+  title,
+  onClick,
+  isDark,
+}: {
+  icon: React.ComponentType<{ size?: number }>;
+  title: string;
+  onClick: () => void;
+  isDark: boolean;
+}) {
+  return (
+    <button
+      className="flex items-center justify-center rounded-lg border p-1.5 transition-colors"
+      style={{ borderColor: v("border-secondary"), color: v("text-secondary") }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = v("bg-hover"); }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+      onClick={onClick}
+      title={title}
+    >
+      <Icon size={14} />
+    </button>
+  );
+}
