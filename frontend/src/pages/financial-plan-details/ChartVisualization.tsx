@@ -1,6 +1,6 @@
 import { memo, useMemo, useRef, useCallback } from "react";
 import { Download } from "lucide-react";
-import ReactEChartsCore from "echarts-for-react/lib/core";
+import ReactECharts from "echarts-for-react";
 import * as echarts from "echarts/core";
 import { LineChart } from "echarts/charts";
 import { GridComponent, TooltipComponent, LegendComponent, DataZoomComponent } from "echarts/components";
@@ -44,7 +44,7 @@ export const ChartVisualization = memo(function ChartVisualization({
   onExport,
   onAddPoint,
 }: ChartVisualizationProps) {
-  const chartRef = useRef<ReactEChartsCore | null>(null);
+  const chartRef = useRef<ReactECharts | null>(null);
   const chartData = buildChartData(points, timeframe);
   const curCode = currencies.find((c) => c.id === chartConfig.currency_id)?.code ?? "RUB";
   const curSym = getCurrencySymbol(curCode);
@@ -340,7 +340,7 @@ export const ChartVisualization = memo(function ChartVisualization({
         </div>
       ) : (
         <div className="relative w-full overflow-hidden rounded-xl">
-          <ReactEChartsCore
+          <ReactECharts
             ref={chartRef}
             echarts={echarts}
             option={option}

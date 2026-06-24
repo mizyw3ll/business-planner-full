@@ -12,6 +12,7 @@ import { Loader2 } from "lucide-react";
 
 echarts.use([LineChart, GridComponent, TooltipComponent, CanvasRenderer]);
 import { v } from "../shared/theme";
+import { getCurrencySymbol } from "../shared/currency";
 import type { PlanBlock, FinancialPlan, ChartPoint } from "../api";
 
 interface BlockRendererProps {
@@ -135,21 +136,62 @@ function MetricsRenderer({ block }: { block: PlanBlock }) {
 }
 
 /* ─── Chart Embed ─── */
-function ChartMiniView({ points, loading }: { points?: ChartPoint[]; loading?: boolean }) {
+interface MetricCardProps {
+  label: string;
+  value: string;
+  color: string;
+  icon?: string;
+}
+
+function MetricCard({ label, value, color }: MetricCardProps) {
+  return (
+    <div
+      className="rounded-xl border p-3 flex flex-col gap-1"
+      style={{ borderColor: v("border-primary"), background: v("bg-card") }}
+    >
+      <p className="text-[10px] uppercase tracking-wider font-medium" style={{ color: v("text-muted") }}>
+        {label}
+      </p>
+      <p className="text-lg font-bold leading-none" style={{ color }}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function ChartMiniView({ points, loading, currencyCode }: { points?: ChartPoint[]; loading?: boolean; currencyCode?: string }) {
   const chartRef = useRef<HTMLDivElement>(null);
   const instanceRef = useRef<echarts.ECharts | null>(null);
 
-  const data = useMemo(() => {
-    if (!points || points.length === 0) return null;
+  const { data, totals } = useMemo(() => {
+    if (!points || points.length === 0) return { data: null, totals: null };
     const grouped: Record<string, { date: string; income: number; expense: number }> = {};
+    let totalIncome = 0;
+    let totalExpense = 0;
     for (const p of points) {
       const key = p.date.slice(0, 10);
       if (!grouped[key]) grouped[key] = { date: key, income: 0, expense: 0 };
-      if (p.type === "income") grouped[key].income += Number(p.amount);
-      else grouped[key].expense += Number(p.amount);
+      if (p.type === "income") {
+        const amt = Number(p.amount);
+        grouped[key].income += amt;
+        totalIncome += amt;
+      } else {
+        const amt = Number(p.amount);
+        grouped[key].expense += amt;
+        totalExpense += amt;
+      }
     }
-    return Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date));
+    return {
+      data: Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date)),
+      totals: { income: totalIncome, expense: totalExpense, net: totalIncome - totalExpense },
+    };
   }, [points]);
+
+  const fmt = (n: number) => {
+    const abs = Math.abs(n).toLocaleString("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    return n < 0 ? `−${abs}` : abs;
+  };
+  const sym = currencyCode ? getCurrencySymbol(currencyCode) : "₽";
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -162,7 +204,7 @@ function ChartMiniView({ points, loading }: { points?: ChartPoint[]; loading?: b
     instanceRef.current = instance;
 
     instance.setOption({
-      color: ["#16a34a", "#dc2626"],
+      color: ["#10b981", "#f43f5e"],
       grid: { left: 0, right: 0, top: 4, bottom: 0 },
       xAxis: {
         type: "category",
@@ -181,11 +223,11 @@ function ChartMiniView({ points, loading }: { points?: ChartPoint[]; loading?: b
           type: "line",
           smooth: true,
           symbol: "none",
-          lineStyle: { width: 1.5 },
+          lineStyle: { width: 2 },
           areaStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: "rgba(22, 163, 74, 0.15)" },
-              { offset: 1, color: "rgba(22, 163, 74, 0.01)" },
+              { offset: 0, color: "rgba(16, 185, 129, 0.2)" },
+              { offset: 1, color: "rgba(16, 185, 129, 0.02)" },
             ]),
           },
           data: data.map((d) => d.income),
@@ -195,11 +237,11 @@ function ChartMiniView({ points, loading }: { points?: ChartPoint[]; loading?: b
           type: "line",
           smooth: true,
           symbol: "none",
-          lineStyle: { width: 1.5 },
+          lineStyle: { width: 2 },
           areaStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: "rgba(220, 38, 38, 0.12)" },
-              { offset: 1, color: "rgba(220, 38, 38, 0.01)" },
+              { offset: 0, color: "rgba(244, 63, 94, 0.18)" },
+              { offset: 1, color: "rgba(244, 63, 94, 0.01)" },
             ]),
           },
           data: data.map((d) => d.expense),
@@ -225,12 +267,23 @@ function ChartMiniView({ points, loading }: { points?: ChartPoint[]; loading?: b
     );
   if (!data || data.length === 0)
     return (
-      <p className="mt-2 text-xs" style={{ color: v("text-muted") }}>
-        Нет данных
-      </p>
+      <div className="mt-2 flex h-20 items-center justify-center rounded-xl border border-dashed" style={{ borderColor: v("border-primary"), background: v("bg-primary") }}>
+        <p className="text-xs" style={{ color: v("text-muted") }}>
+          Нет данных для отображения
+        </p>
+      </div>
     );
 
-  return <div ref={chartRef} className="h-32 w-full" />;
+  return (
+    <div className="mt-2 space-y-3">
+      <div className="grid grid-cols-3 gap-2">
+        <MetricCard label="Доход" value={`${fmt(totals!.income)} ${sym}`} color="#10b981" />
+        <MetricCard label="Расход" value={`${fmt(totals!.expense)} ${sym}`} color="#f43f5e" />
+        <MetricCard label="Чистая прибыль" value={`${fmt(totals!.net)} ${sym}`} color={totals!.net >= 0 ? "#10b981" : "#f43f5e"} />
+      </div>
+      <div ref={chartRef} className="h-28 w-full" />
+    </div>
+  );
 }
 
 function ChartEmbedRenderer({
