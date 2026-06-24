@@ -147,6 +147,8 @@ export function TimelineEditor({
               className={tw.inputBase + " text-sm"}
               style={inputStyle(isDark)}
               value={m.date}
+              min="2000-01-01"
+              max="2099-12-31"
               onChange={(e) => {
                 const next = [...milestones];
                 next[idx] = { ...m, date: e.target.value };

@@ -150,7 +150,12 @@ export const DealFormModal = memo(function DealFormModal({
             <input
               type="date"
               value={dDueDate}
-              onChange={(e) => { onDueDateChange(e.target.value); if (dealErrors.dueDate) onClearError("dueDate"); }}
+              min="2000-01-01"
+              max="2099-12-31"
+              onChange={(e) => {
+                onDueDateChange(e.target.value);
+                if (dealErrors.dueDate) onClearError("dueDate");
+              }}
               className="w-full rounded-xl border px-3 py-2 text-sm"
               style={{ ...inputStyle(isDark), borderColor: dealErrors.dueDate ? "#ef4444" : undefined }}
             />

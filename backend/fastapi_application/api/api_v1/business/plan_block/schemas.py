@@ -23,6 +23,14 @@ class PlanBlockBase(BaseModel):
             raise ValueError("Поле не может быть пустым")
         return v.strip()
 
+    @field_validator("due_date")
+    @classmethod
+    def validate_due_date(cls, v: date | None) -> date | None:
+        if v is not None:
+            if v.year < 1900 or v.year > 2099:
+                raise ValueError(f"Год {v.year} вне допустимого диапазона (2000–2099)")
+        return v
+
 
 class ReorderBlocksRequest(BaseModel):
     new_order: list[int] = Field(..., description="Новый порядок ID блоков")
@@ -54,6 +62,14 @@ class PlanBlockUpdate(BaseModel):
         if v is not None and not v.strip():
             raise ValueError("Поле не может быть пустым")
         return v.strip() if v else v
+
+    @field_validator("due_date")
+    @classmethod
+    def validate_due_date(cls, v: date | None) -> date | None:
+        if v is not None:
+            if v.year < 1900 or v.year > 2099:
+                raise ValueError(f"Год {v.year} вне допустимого диапазона (2000–2099)")
+        return v
 
 
 class PlanBlockDraftSave(BaseModel):
