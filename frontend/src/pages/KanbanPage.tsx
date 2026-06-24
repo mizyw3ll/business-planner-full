@@ -30,6 +30,7 @@ import { useTheme } from "../features/theme/ThemeContext";
 import { useKanbanBoardsQuery, useKanbanBoardQuery } from "../hooks/useCachedData";
 import { queryKeys } from "../lib/queryClient";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { EmptyState } from "../components/EmptyState";
 import { useModalRegistration } from "../hooks/useModalOpen";
 import { CardOverlay, KanbanColumn } from "./KanbanPageComponents";
 import { BoardList } from "./kanban/BoardList";
@@ -316,7 +317,12 @@ export function KanbanPage() {
       </div>
 
       {boards.length === 0 && !showCreateBoard && (
-        <p className="text-sm" style={{ color: v("text-tertiary") }}>Нет досок. Создайте первую.</p>
+        <EmptyState
+          title="У вас пока нет досок"
+          subtitle="Создайте первую доску для управления задачами"
+          actionLabel="Создать доску"
+          onAction={() => setShowCreateBoard(true)}
+        />
       )}
 
       {boards.length > 0 && filteredBoards.length === 0 && (

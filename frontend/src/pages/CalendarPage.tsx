@@ -13,6 +13,7 @@ import {
 import { buttonStyle, inputStyle, tw, v } from "../shared/theme";
 import { useTheme } from "../features/theme/ThemeContext";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { EmptyState } from "../components/EmptyState";
 import { useModalRegistration } from "../hooks/useModalOpen";
 import { CalendarGrid } from "./calendar/CalendarGrid";
 import { EventList } from "./calendar/EventList";
@@ -303,7 +304,16 @@ export function CalendarPage() {
         onDeleteEvent={(ev) => setDeleteTarget(ev)}
       />
 
-      <EventList
+      {events.length === 0 && (
+        <EmptyState
+          title="У вас пока нет событий"
+          subtitle="Создайте первое событие в календаре"
+          actionLabel="Создать событие"
+          onAction={() => setShowCreate(true)}
+        />
+      )}
+
+      {events.length > 0 && <EventList
         events={events}
         isDark={isDark}
         searchQuery={searchQuery}
@@ -312,7 +322,7 @@ export function CalendarPage() {
         onSortChange={setSortBy}
         onEditEvent={openEdit}
         onDeleteEvent={(ev) => setDeleteTarget(ev)}
-      />
+      />}
 
       {showCreate && (
         <div className="fixed inset-0 z-[90] grid place-items-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>

@@ -1,7 +1,8 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ScrollText, PiggyBank, FileText, BarChart3, Plus, ArrowRight, TrendingUp, Calendar } from "lucide-react";
 import { v, tw } from "../shared/theme";
 import { useDashboardQuery } from "../hooks/useCachedData";
+import { EmptyState } from "../components/EmptyState";
 import { AnimatedCounter } from "../shared/components/AnimatedCounter";
 import { GlassCard } from "../shared/components/GlassCard";
 import { OptimizedList } from "../shared/components/OptimizedList";
@@ -12,6 +13,7 @@ const ITEM_HEIGHT = 80; // Height for each item in virtual list
 
 export function DashboardPage() {
   usePerformanceMonitoring();
+  const navigate = useNavigate();
   
   const { data: dashboard, isLoading, error } = useDashboardQuery();
   
@@ -204,12 +206,13 @@ export function DashboardPage() {
               )}
             />
           ) : (
-            <GlassCard hover={false} className="h-48 justify-center border-dashed">
-              <ScrollText size={32} className="mx-auto mb-3 opacity-20" style={{ color: v("text-muted") }} />
-              <p className="text-sm font-semibold text-center" style={{ color: v("text-muted") }}>
-                Нет бизнес-планов
-              </p>
-            </GlassCard>
+            <EmptyState
+              compact
+              title="Нет бизнес-планов"
+              subtitle="Создайте первый план, чтобы начать работу"
+              actionLabel="Создать план"
+              onAction={() => navigate("/business-plans")}
+            />
           )}
         </div>
 
@@ -272,12 +275,13 @@ export function DashboardPage() {
               )}
             />
           ) : (
-            <GlassCard hover={false} className="h-48 justify-center border-dashed">
-              <TrendingUp size={32} className="mx-auto mb-3 opacity-20" style={{ color: v("text-muted") }} />
-              <p className="text-sm font-semibold text-center" style={{ color: v("text-muted") }}>
-                Нет финансовых графиков
-              </p>
-            </GlassCard>
+            <EmptyState
+              compact
+              title="Нет финансовых графиков"
+              subtitle="Создайте первый график для отслеживания доходов"
+              actionLabel="Создать график"
+              onAction={() => navigate("/financial-plans")}
+            />
           )}
         </div>
 
@@ -337,12 +341,13 @@ export function DashboardPage() {
               )}
             />
           ) : (
-            <GlassCard hover={false} className="h-48 justify-center border-dashed">
-              <FileText size={32} className="mx-auto mb-3 opacity-20" style={{ color: v("text-muted") }} />
-              <p className="text-sm font-semibold text-center" style={{ color: v("text-muted") }}>
-                Нет заметок
-              </p>
-            </GlassCard>
+            <EmptyState
+              compact
+              title="Нет заметок"
+              subtitle="Создайте первую заметку"
+              actionLabel="Создать заметку"
+              onAction={() => navigate("/notes")}
+            />
           )}
         </div>
       </div>

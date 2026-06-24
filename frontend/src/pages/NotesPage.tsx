@@ -24,6 +24,7 @@ import {
 } from "../api";
 import { useNotesQuery, useProjectsQuery, useTagsQuery } from "../hooks/useCachedData";
 import { queryKeys } from "../lib/queryClient";
+import { EmptyState } from "../components/EmptyState";
 import { TagPicker } from "../components/TagPicker";
 import { TagChip } from "../components/TagChip";
 import { MarkdownPreview } from "../components/MarkdownPreview";
@@ -428,16 +429,12 @@ export function NotesPage() {
           ))}
         </div>
       ) : notes.length === 0 ? (
-        <div className="flex items-center justify-center h-40 animate-fade-in">
-          <div className="text-center">
-            <p className="text-sm font-medium" style={{ color: v("text-primary") }}>
-              Нет заметок
-            </p>
-            <p className="mt-1 text-xs" style={{ color: v("text-muted") }}>
-              Создайте первую заметку
-            </p>
-          </div>
-        </div>
+        <EmptyState
+          title="У вас пока нет заметок"
+          subtitle="Создайте первую заметку, чтобы начать работу"
+          actionLabel="Создать заметку"
+          onAction={openNewNote}
+        />
       ) : filteredNotes.length === 0 ? (
         <div className="flex items-center justify-center h-40 animate-fade-in">
           <p className="text-sm" style={{ color: v("text-muted") }}>

@@ -4,6 +4,7 @@ import {
   Plus,
   Trash2,
   Phone,
+  DollarSign,
   Mail,
   Building2,
   User,
@@ -26,6 +27,7 @@ import {
   type Contact,
   type Deal,
 } from "../api";
+import { EmptyState } from "../components/EmptyState";
 import { cardStyle, inputStyle, buttonStyle, tw, v } from "../shared/theme";
 import { getCurrencySymbol } from "../shared/currency";
 import { useTheme } from "../features/theme/ThemeContext";
@@ -396,20 +398,20 @@ export function CrmPage() {
       <div className={tw.pageContainer}>
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold" style={{ color: v("text-primary") }}>CRM</h1>
-          <div className="flex gap-2">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
             <button
               type="button"
               onClick={() => { resetContactForm(); setEditingContact(null); setShowContactForm(true); }}
-              className={`${tw.buttonPrimary} flex items-center gap-1.5`}
+              className={`${tw.buttonPrimary} flex items-center gap-1.5 shrink-0`}
             >
-              <Plus size={16} /> <span className="hidden sm:inline">Контакт</span>
+              <Phone size={16} /> <span>Контакт</span>
             </button>
             <button
               type="button"
               onClick={() => { resetDealForm(); setEditingDeal(null); setShowDealForm(true); }}
-              className={`${tw.buttonPrimary} flex items-center gap-1.5`}
+              className={`${tw.buttonPrimary} flex items-center gap-1.5 shrink-0`}
             >
-              <Plus size={16} /> <span className="hidden sm:inline">Сделка</span>
+              <DollarSign size={16} /> <span>Сделка</span>
             </button>
           </div>
         </div>
@@ -464,7 +466,17 @@ export function CrmPage() {
               </div>
             </div>
             {filteredContacts.length === 0 ? (
-              <p className="text-sm" style={{ color: v("text-muted") }}>{searchQuery ? "Ничего не найдено" : "Нет контактов"}</p>
+              searchQuery ? (
+                <p className="text-sm" style={{ color: v("text-muted") }}>Ничего не найдено</p>
+              ) : (
+                <EmptyState
+                  compact
+                  title="Нет контактов"
+                  subtitle="Добавьте первый контакт"
+                  actionLabel="Создать контакт"
+                  onAction={() => { resetContactForm(); setEditingContact(null); setShowContactForm(true); }}
+                />
+              )
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredContacts.map((contact: Contact, i) => (
@@ -540,7 +552,17 @@ export function CrmPage() {
               </div>
             </div>
             {filteredDeals.length === 0 ? (
-              <p className="text-sm" style={{ color: v("text-muted") }}>{searchQuery ? "Ничего не найдено" : "Нет сделок"}</p>
+              searchQuery ? (
+                <p className="text-sm" style={{ color: v("text-muted") }}>Ничего не найдено</p>
+              ) : (
+                <EmptyState
+                  compact
+                  title="Нет сделок"
+                  subtitle="Добавьте первую сделку"
+                  actionLabel="Создать сделку"
+                  onAction={() => { resetDealForm(); setEditingDeal(null); setShowDealForm(true); }}
+                />
+              )
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredDeals.map((deal: Deal, i) => (

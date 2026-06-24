@@ -27,6 +27,7 @@ import { cardStyle, inputStyle, buttonStyle, tw, v } from "../shared/theme";
 import { useTheme } from "../features/theme/ThemeContext";
 import { useTaxEventsQuery } from "../hooks/useCachedData";
 import { queryKeys } from "../lib/queryClient";
+import { EmptyState } from "../components/EmptyState";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { useModalRegistration } from "../hooks/useModalOpen";
 
@@ -414,16 +415,12 @@ function openEditForm(event: TaxEvent) {
       )}
 
       {!isLoading && events.length === 0 && (
-        <div className="flex items-center justify-center min-h-[200px] animate-fade-in">
-          <div className="text-center">
-            <p className="text-sm font-medium" style={{ color: v("text-primary") }}>
-              Нет событий
-            </p>
-            <p className="mt-1 text-xs" style={{ color: v("text-muted") }}>
-              Добавьте первое событие
-            </p>
-          </div>
-        </div>
+        <EmptyState
+          title="У вас пока нет событий"
+          subtitle="Добавьте первое событие в налоговый календарь"
+          actionLabel="Добавить событие"
+          onAction={openNewForm}
+        />
       )}
 
       {filteredUpcoming.length > 0 && (
