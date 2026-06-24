@@ -36,6 +36,9 @@ docker-compose.local.yml
 pg_data/
 pg_data_local/
 
+# ── Uploads ─────────────────────────────────────────────────
+backend/fastapi_application/uploads/
+
 # ── OS ──────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
